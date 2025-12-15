@@ -21,10 +21,21 @@ jobs:
       - name: Install clasp
         run: npm install -g @google/clasp
       
-      - name: Write clasp credentials
+      - name: Write clasp credentials (all locations)
         run: |
           mkdir -p ~/.config/@google
+          mkdir -p ~/.clasprc.json
+          echo '${{ secrets.CLASPRC }}' > ~/.clasprc.json
           echo '${{ secrets.CLASPRC }}' > ~/.config/@google/clasp.json
+          echo '${{ secrets.CLASPRC }}' > /home/runner/.clasprc.json
+      
+      - name: Verify credentials
+        run: |
+          echo "Checking clasp version..."
+          clasp --version
+          echo "Checking if credentials exist..."
+          ls -la ~/.clasprc.json || echo "No ~/.clasprc.json"
+          ls -la ~/.config/@google/clasp.json || echo "No clasp.json"
       
       - name: Push to Apps Script
         run: clasp push --force
