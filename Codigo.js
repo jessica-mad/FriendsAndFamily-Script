@@ -1,3 +1,1356 @@
-function myFunction() {
+// ============================================================================
+// MENÚ PERSONALIZADO
+// ============================================================================
+
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('🤖 Weavers Automation')
+    .addItem('⚙️ Configurar Trigger Automático', 'setupTrigger')
+    .addSeparator()
+    .addItem('✨ Generar Insights (Filas Seleccionadas)', 'generateInsightsForSelection')
+    .addItem('✨ Generar Insights (Todas las Filas Vacías)', 'generateInsightsForEmptyRows')
+    .addSeparator()
+    .addItem('📧 Enviar a Mailchimp (Filas Seleccionadas)', 'sendToMailchimpSelection')
+    .addItem('📧 Enviar a Mailchimp (Todas con Insight)', 'sendToMailchimpAll')
+    .addSeparator()
+    .addItem('🧪 Probar Script con Última Fila', 'testScript')
+    .addItem('🧪 Verificar Merge Field en Mailchimp', 'testMergeFieldCreation')
+    .addItem('🧪 Probar Conexión Mailchimp', 'testMailchimpConnection')
+    .addItem('🔍 Obtener List ID de Mailchimp', 'getMailchimpListId')
+    .addItem('🔍 Debug: Probar envío a Mailchimp con logs', 'debugMailchimpSend')
+    .addItem('🔍 Buscar contacto específico en Mailchimp', 'searchMemberInMailchimp')
+    .addToUi();
+}
+
+function searchMemberInMailchimp() {
+  const ui = SpreadsheetApp.getUi();
   
+  if (CONFIG.MAILCHIMP_LIST_ID === 'TU_LIST_ID_AQUI') {
+    ui.alert('⚠️ Configura tu List ID primero');
+    return;
+  }
+  
+  const response = ui.prompt(
+    'Buscar contacto en Mailchimp',
+    'Ingresa el email del contacto:',
+    ui.ButtonSet.OK_CANCEL
+  );
+  
+  if (response.getSelectedButton() !== ui.Button.OK) {
+    return;
+  }
+  
+  const email = response.getResponseText().trim();
+  
+  if (!email || !email.includes('@')) {
+    ui.alert('❌ Email inválido');
+    return;
+  }
+  
+  logDetailed('═══════════════════════════════════════════');
+  logDetailed('🔍 BUSCANDO CONTACTO EN MAILCHIMP');
+  logDetailed('═══════════════════════════════════════════');
+  
+  const member = checkIfMemberExists(email);
+  
+  if (member) {
+    // Verificar los 3 campos de insight
+    let insightInfo = '';
+    if (member.merge_fields) {
+      const insight1 = member.merge_fields.INSIGHT1 || '';
+      const insight2 = member.merge_fields.INSIGHT2 || '';
+      const insight3 = member.merge_fields.INSIGHT3 || '';
+      
+      insightInfo = '\n\nINSIGHTS:\n' +
+                   'Parte 1: ' + (insight1 ? insight1.length + ' chars' : 'vacío') + '\n' +
+                   'Parte 2: ' + (insight2 ? insight2.length + ' chars' : 'vacío') + '\n' +
+                   'Parte 3: ' + (insight3 ? insight3.length + ' chars' : 'vacío');
+    }
+    
+    ui.alert(
+      '✅ CONTACTO ENCONTRADO\n\n' +
+      'Email: ' + member.email_address + '\n' +
+      'Status: ' + member.status + '\n' +
+      'Rating: ' + member.member_rating + '\n' +
+      'Último cambio: ' + member.last_changed +
+      insightInfo + '\n\n' +
+      'Revisa los logs para más detalles.'
+    );
+  } else {
+    ui.alert(
+      '❌ CONTACTO NO ENCONTRADO\n\n' +
+      'El email ' + email + ' no existe en tu lista de Mailchimp.\n\n' +
+      'Revisa los logs para más información.'
+    );
+  }
+  
+  logDetailed('═══════════════════════════════════════════');
+}
+
+// ============================================================================
+// NUEVAS FUNCIONES DE DEBUG PARA MAILCHIMP
+// ============================================================================
+
+function getMailchimpListId() {
+  try {
+    logDetailed('🔍 OBTENIENDO LIST ID DE MAILCHIMP');
+    
+    const url = `https://${CONFIG.MAILCHIMP_SERVER}.api.mailchimp.com/3.0/lists`;
+    
+    logDetailed('URL: ' + url);
+    
+    const response = UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: {
+        'Authorization': 'Bearer ' + CONFIG.MAILCHIMP_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      muteHttpExceptions: true
+    });
+    
+    const code = response.getResponseCode();
+    logDetailed('Response code: ' + code);
+    
+    if (code === 200) {
+      const result = JSON.parse(response.getContentText());
+      logDetailed('Número de listas encontradas: ' + result.lists.length);
+      
+      let message = '📋 LISTAS DISPONIBLES:\n\n';
+      result.lists.forEach(function(list) {
+        message += '• ' + list.name + '\n';
+        message += '  ID: ' + list.id + '\n';
+        message += '  Miembros: ' + list.stats.member_count + '\n\n';
+        logDetailed('Lista: ' + list.name + ' (ID: ' + list.id + ')');
+      });
+      
+      SpreadsheetApp.getUi().alert(message);
+    } else {
+      logDetailed('❌ Error: ' + response.getContentText());
+      SpreadsheetApp.getUi().alert('❌ Error al obtener listas\n\n' + response.getContentText());
+    }
+    
+  } catch (error) {
+    logDetailed('❌ Excepción: ' + error.toString());
+    SpreadsheetApp.getUi().alert('❌ Error: ' + error.toString());
+  }
+}
+
+function getMailchimpMemberCount() {
+  try {
+    const url = `https://${CONFIG.MAILCHIMP_SERVER}.api.mailchimp.com/3.0/lists/${CONFIG.MAILCHIMP_LIST_ID}`;
+    
+    const response = UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: {
+        'Authorization': 'Bearer ' + CONFIG.MAILCHIMP_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      muteHttpExceptions: true
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const result = JSON.parse(response.getContentText());
+      return {
+        total: result.stats.member_count,
+        subscribed: result.stats.member_count_since_send || result.stats.member_count,
+        unsubscribed: result.stats.unsubscribe_count || 0,
+        pending: result.stats.member_count - (result.stats.member_count_since_send || result.stats.member_count)
+      };
+    }
+    return null;
+  } catch (error) {
+    logDetailed('Error al obtener count: ' + error);
+    return null;
+  }
+}
+
+function checkIfMemberExists(email) {
+  try {
+    const emailNormalizado = email.toLowerCase().trim();
+    const subscriberHash = generateMD5Hash(emailNormalizado);
+    
+    const url = `https://${CONFIG.MAILCHIMP_SERVER}.api.mailchimp.com/3.0/lists/${CONFIG.MAILCHIMP_LIST_ID}/members/${subscriberHash}`;
+    
+    logDetailed('\n🔍 VERIFICANDO SI EL CONTACTO EXISTE EN MAILCHIMP');
+    logDetailed('Email buscado: ' + emailNormalizado);
+    logDetailed('Hash: ' + subscriberHash);
+    logDetailed('URL: ' + url);
+    
+    const response = UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: {
+        'Authorization': 'Bearer ' + CONFIG.MAILCHIMP_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      muteHttpExceptions: true
+    });
+    
+    const code = response.getResponseCode();
+    logDetailed('Response Code: ' + code);
+    
+    if (code === 200) {
+      const member = JSON.parse(response.getContentText());
+      logDetailed('✅ CONTACTO ENCONTRADO:');
+      logDetailed('Email: ' + member.email_address);
+      logDetailed('Status: ' + member.status);
+      logDetailed('Member Rating: ' + member.member_rating);
+      logDetailed('Last Changed: ' + member.last_changed);
+      
+      // Verificar los 3 merge fields
+      if (member.merge_fields) {
+        if (member.merge_fields.INSIGHT1) {
+          logDetailed('✅ INSIGHT1 encontrado (' + member.merge_fields.INSIGHT1.length + ' chars)');
+        }
+        if (member.merge_fields.INSIGHT2) {
+          logDetailed('✅ INSIGHT2 encontrado (' + member.merge_fields.INSIGHT2.length + ' chars)');
+        }
+        if (member.merge_fields.INSIGHT3) {
+          logDetailed('✅ INSIGHT3 encontrado (' + member.merge_fields.INSIGHT3.length + ' chars)');
+        }
+      }
+      
+      // Verificar tags
+      if (member.tags && member.tags.length > 0) {
+        logDetailed('Tags: ' + member.tags.map(t => t.name).join(', '));
+      } else {
+        logDetailed('⚠️ Sin tags');
+      }
+      
+      return member;
+    } else if (code === 404) {
+      logDetailed('❌ CONTACTO NO ENCONTRADO en Mailchimp');
+      logDetailed('Response: ' + response.getContentText());
+      return null;
+    } else {
+      logDetailed('❌ Error al buscar contacto: ' + response.getContentText());
+      return null;
+    }
+    
+  } catch (error) {
+    logDetailed('❌ Excepción al verificar contacto: ' + error.toString());
+    return null;
+  }
+}
+
+function debugMailchimpSend() {
+  const ui = SpreadsheetApp.getUi();
+  
+  if (CONFIG.MAILCHIMP_LIST_ID === 'TU_LIST_ID_AQUI') {
+    ui.alert('⚠️ CONFIGURACIÓN INCOMPLETA\n\n' +
+             'Debes obtener tu List ID primero:\n' +
+             '1. Ve al menú: Obtener List ID de Mailchimp\n' +
+             '2. Copia el ID de la lista que quieras usar\n' +
+             '3. Pégalo en CONFIG.MAILCHIMP_LIST_ID');
+    return;
+  }
+  
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME_DATA);
+  const lastRow = sheet.getLastRow();
+  
+  if (lastRow < 2) {
+    ui.alert('❌ No hay datos para probar');
+    return;
+  }
+  
+  logDetailed('═══════════════════════════════════════════');
+  logDetailed('🔍 INICIANDO DEBUG DE MAILCHIMP');
+  logDetailed('═══════════════════════════════════════════');
+  logDetailed('Fecha: ' + new Date().toISOString());
+  
+  const countBefore = getMailchimpMemberCount();
+  if (countBefore) {
+    logDetailed('\n📊 CONTANDO CONTACTOS EN MAILCHIMP (ANTES)');
+    logDetailed('Total de miembros: ' + countBefore.total);
+    logDetailed('Suscritos: ' + countBefore.subscribed);
+  }
+  
+  try {
+    logDetailed('\n📋 PASO 1: VERIFICANDO CONFIGURACIÓN');
+    logDetailed('Mailchimp Server: ' + CONFIG.MAILCHIMP_SERVER);
+    logDetailed('List ID: ' + CONFIG.MAILCHIMP_LIST_ID);
+    
+    logDetailed('\n📊 PASO 2: OBTENIENDO DATOS DE FILA ' + lastRow);
+    const rowData = sheet.getRange(lastRow, 1, 1, CONFIG.COLUMNS.INSIGHT + 1).getValues()[0];
+    const userData = extractUserData(rowData);
+    const insight = rowData[CONFIG.COLUMNS.INSIGHT];
+    
+    logDetailed('Email: "' + userData.email + '"');
+    logDetailed('Insight length: ' + (insight ? insight.length : 0) + ' chars');
+    
+    const emailNormalizado = userData.email.toLowerCase().trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (!emailRegex.test(emailNormalizado)) {
+      throw new Error('Email inválido: ' + userData.email);
+    }
+    
+    const subscriberHash = generateMD5Hash(emailNormalizado);
+    logDetailed('\n🔐 Hash MD5: ' + subscriberHash);
+    
+    logDetailed('\n🏷️ VERIFICANDO MERGE FIELDS (3 campos)');
+    ensureMergeFieldExists();
+    
+    logDetailed('\n📤 ENVIANDO A MAILCHIMP CON 3 PARTES');
+    const updated = updateMailchimpMergeField(emailNormalizado, insight, userData);
+    
+    if (updated) {
+      addMailchimpTag(emailNormalizado, 'insight_generado');
+      
+      ui.alert('✅ ÉXITO\n\n' +
+               'Email: ' + emailNormalizado + '\n' +
+               'El insight se dividió en 3 partes\n\n' +
+               'Revisa los logs para ver los detalles.');
+      
+      Utilities.sleep(2000);
+      const member = checkIfMemberExists(emailNormalizado);
+      if (member && member.status === 'subscribed') {
+        logDetailed('\n✅ VERIFICACIÓN FINAL: CONTACTO CONFIRMADO EN MAILCHIMP');
+      }
+    } else {
+      ui.alert('❌ ERROR\n\nNo se pudo actualizar Mailchimp.\nRevisa los logs.');
+    }
+    
+  } catch (error) {
+    logDetailed('\n❌ EXCEPCIÓN CAPTURADA');
+    logDetailed('Error: ' + error.toString());
+    ui.alert('❌ ERROR\n\n' + error.toString());
+  }
+  
+  logDetailed('\n═══════════════════════════════════════════');
+  logDetailed('🏁 FIN DEL DEBUG');
+  logDetailed('═══════════════════════════════════════════');
+}
+
+function generateMD5Hash(email) {
+  const emailBytes = Utilities.newBlob(email).getBytes();
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, emailBytes);
+  
+  let hash = '';
+  for (let i = 0; i < digest.length; i++) {
+    const byte = digest[i];
+    if (byte < 0) {
+      hash += ('0' + (byte + 256).toString(16)).slice(-2);
+    } else {
+      hash += ('0' + byte.toString(16)).slice(-2);
+    }
+  }
+  
+  return hash;
+}
+
+function logDetailed(message) {
+  Logger.log(message);
+  console.log(message);
+}
+
+// ============================================================================
+// LEER PROMPTS DESDE HOJA "Prompts"
+// ============================================================================
+
+function getPromptsFromSheet() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const promptsSheet = ss.getSheetByName(CONFIG.SHEET_NAME_PROMPTS);
+    
+    if (!promptsSheet) {
+      throw new Error('No se encontró la hoja "Prompts".');
+    }
+    
+    const systemPrompt = promptsSheet.getRange('D2').getValue();
+    const userPromptTemplate = promptsSheet.getRange('D3').getValue();
+    const arbolDecision = promptsSheet.getRange('D4').getValue();
+    
+    if (!systemPrompt || !userPromptTemplate) {
+      throw new Error('Las celdas D2 y D3 de la hoja "Prompts" están vacías.');
+    }
+    
+    return {
+      systemPrompt: systemPrompt,
+      userPromptTemplate: userPromptTemplate,
+      arbolDecision: arbolDecision || ''
+    };
+    
+  } catch (error) {
+    Logger.log('Error al leer prompts: ' + error.toString());
+    throw error;
+  }
+}
+
+// ============================================================================
+// FUNCIONES CON BOTONES - GENERAR INSIGHTS
+// ============================================================================
+
+function generateInsightsForSelection() {
+  const ui = SpreadsheetApp.getUi();
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME_DATA);
+  const selection = sheet.getActiveRange();
+  
+  if (!selection) {
+    ui.alert('❌ Selecciona las filas que deseas procesar.');
+    return;
+  }
+  
+  const firstRow = selection.getRow();
+  const numRows = selection.getNumRows();
+  
+  const response = ui.alert(
+    'Generar Insights',
+    `¿Generar insights para ${numRows} fila(s)?\nFilas: ${firstRow} a ${firstRow + numRows - 1}`,
+    ui.ButtonSet.YES_NO
+  );
+  
+  if (response !== ui.Button.YES) return;
+  
+  let processed = 0;
+  let errors = 0;
+  
+  for (let i = 0; i < numRows; i++) {
+    try {
+      if (processRowInsight(sheet, firstRow + i)) {
+        processed++;
+      } else {
+        errors++;
+      }
+    } catch (error) {
+      Logger.log(`Error fila ${firstRow + i}: ${error}`);
+      errors++;
+    }
+    Utilities.sleep(500);
+  }
+  
+  ui.alert('✅ Completado', `Generados: ${processed}\nErrores: ${errors}`, ui.ButtonSet.OK);
+}
+
+function generateInsightsForEmptyRows() {
+  const ui = SpreadsheetApp.getUi();
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME_DATA);
+  const lastRow = sheet.getLastRow();
+  
+  const emptyRows = [];
+  for (let i = 2; i <= lastRow; i++) {
+    if (!sheet.getRange(i, CONFIG.COLUMNS.INSIGHT + 1).getValue()) {
+      emptyRows.push(i);
+    }
+  }
+  
+  if (emptyRows.length === 0) {
+    ui.alert('ℹ️ No hay filas pendientes');
+    return;
+  }
+  
+  const response = ui.alert(
+    'Generar Insights Masivo',
+    `${emptyRows.length} filas sin insight.\n¿Procesar todas?`,
+    ui.ButtonSet.YES_NO
+  );
+  
+  if (response !== ui.Button.YES) return;
+  
+  let processed = 0;
+  let errors = 0;
+  
+  for (let i = 0; i < emptyRows.length; i++) {
+    try {
+      if (processRowInsight(sheet, emptyRows[i])) {
+        processed++;
+      } else {
+        errors++;
+      }
+    } catch (error) {
+      Logger.log(`Error fila ${emptyRows[i]}: ${error}`);
+      errors++;
+    }
+    Utilities.sleep(1000);
+  }
+  
+  ui.alert('✅ Completado', `Generados: ${processed}\nErrores: ${errors}`, ui.ButtonSet.OK);
+}
+
+function processRowInsight(sheet, rowNumber) {
+  try {
+    const insightCell = sheet.getRange(rowNumber, CONFIG.COLUMNS.INSIGHT + 1);
+    if (insightCell.getValue() !== '') {
+      Logger.log(`Fila ${rowNumber}: Ya tiene insight`);
+      return false;
+    }
+    
+    const rowData = sheet.getRange(rowNumber, 1, 1, CONFIG.COLUMNS.INSIGHT + 1).getValues()[0];
+    const userData = extractUserData(rowData);
+    
+    if (!userData.email || !userData.email.includes('@')) {
+      Logger.log(`Fila ${rowNumber}: Email inválido`);
+      return false;
+    }
+    
+    const ratios = calculateRatios(userData);
+    const insight = generateInsight(userData, ratios);
+    
+    if (insight && insight.length > 50) {
+      insightCell.setValue(insight);
+      Logger.log(`✅ Fila ${rowNumber}: Insight generado`);
+      return true;
+    }
+    
+    return false;
+    
+  } catch (error) {
+    Logger.log(`❌ Error fila ${rowNumber}: ${error}`);
+    return false;
+  }
+}
+
+// ============================================================================
+// FUNCIONES CON BOTONES - ENVIAR A MAILCHIMP
+// ============================================================================
+
+function sendToMailchimpSelection() {
+  const ui = SpreadsheetApp.getUi();
+  
+  if (CONFIG.MAILCHIMP_LIST_ID === 'TU_LIST_ID_AQUI') {
+    ui.alert('⚠️ CONFIGURACIÓN INCOMPLETA\n\n' +
+             'Debes configurar tu List ID primero:\n' +
+             '1. Ve al menú: Obtener List ID de Mailchimp\n' +
+             '2. Copia el ID y actualiza CONFIG.MAILCHIMP_LIST_ID');
+    return;
+  }
+  
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME_DATA);
+  const selection = sheet.getActiveRange();
+  
+  if (!selection) {
+    ui.alert('❌ Selecciona las filas que deseas enviar.');
+    return;
+  }
+  
+  const firstRow = selection.getRow();
+  const numRows = selection.getNumRows();
+  
+  const response = ui.alert(
+    'Enviar a Mailchimp',
+    `¿Enviar ${numRows} contacto(s) a Mailchimp?\nFilas: ${firstRow} a ${firstRow + numRows - 1}`,
+    ui.ButtonSet.YES_NO
+  );
+  
+  if (response !== ui.Button.YES) return;
+  
+  ensureMergeFieldExists();
+  
+  let sent = 0;
+  let errors = 0;
+  let details = [];
+  
+  for (let i = 0; i < numRows; i++) {
+    try {
+      const result = processRowMailchimp(sheet, firstRow + i);
+      if (result.success) {
+        sent++;
+        details.push(`✅ Fila ${firstRow + i}: ${result.email}`);
+      } else {
+        errors++;
+        details.push(`❌ Fila ${firstRow + i}: ${result.error}`);
+      }
+    } catch (error) {
+      Logger.log(`Error fila ${firstRow + i}: ${error}`);
+      errors++;
+      details.push(`❌ Fila ${firstRow + i}: ${error.toString()}`);
+    }
+    Utilities.sleep(500);
+  }
+  
+  Logger.log(details.join('\n'));
+  ui.alert('✅ Completado', `Enviados: ${sent}\nErrores: ${errors}\n\nRevisa los logs para detalles.`, ui.ButtonSet.OK);
+}
+
+function sendToMailchimpAll() {
+  const ui = SpreadsheetApp.getUi();
+  
+  if (CONFIG.MAILCHIMP_LIST_ID === 'TU_LIST_ID_AQUI') {
+    ui.alert('⚠️ CONFIGURACIÓN INCOMPLETA\n\n' +
+             'Debes configurar tu List ID primero.');
+    return;
+  }
+  
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME_DATA);
+  const lastRow = sheet.getLastRow();
+  
+  const rowsWithInsight = [];
+  for (let i = 2; i <= lastRow; i++) {
+    if (sheet.getRange(i, CONFIG.COLUMNS.INSIGHT + 1).getValue()) {
+      rowsWithInsight.push(i);
+    }
+  }
+  
+  if (rowsWithInsight.length === 0) {
+    ui.alert('ℹ️ No hay filas con insights');
+    return;
+  }
+  
+  const response = ui.alert(
+    'Enviar Todo a Mailchimp',
+    `${rowsWithInsight.length} contactos con insights.\n¿Enviar todos?`,
+    ui.ButtonSet.YES_NO
+  );
+  
+  if (response !== ui.Button.YES) return;
+  
+  ensureMergeFieldExists();
+  
+  let sent = 0;
+  let errors = 0;
+  
+  for (let i = 0; i < rowsWithInsight.length; i++) {
+    try {
+      const result = processRowMailchimp(sheet, rowsWithInsight[i]);
+      if (result.success) {
+        sent++;
+      } else {
+        errors++;
+      }
+    } catch (error) {
+      Logger.log(`Error fila ${rowsWithInsight[i]}: ${error}`);
+      errors++;
+    }
+    Utilities.sleep(1000);
+  }
+  
+  ui.alert('✅ Completado', `Enviados: ${sent}\nErrores: ${errors}`, ui.ButtonSet.OK);
+}
+
+function processRowMailchimp(sheet, rowNumber) {
+  try {
+    logDetailed(`\n🔄 Procesando fila ${rowNumber}`);
+    
+    const rowData = sheet.getRange(rowNumber, 1, 1, CONFIG.COLUMNS.INSIGHT + 1).getValues()[0];
+    const userData = extractUserData(rowData);
+    const insight = rowData[CONFIG.COLUMNS.INSIGHT];
+    
+    logDetailed(`Email: ${userData.email}`);
+    logDetailed(`Insight length: ${insight ? insight.length : 0}`);
+    
+    if (!userData.email || !userData.email.includes('@')) {
+      logDetailed(`❌ Email inválido`);
+      return { success: false, error: 'Email inválido', email: userData.email };
+    }
+    
+    if (!insight || insight === '') {
+      logDetailed(`❌ Sin insight`);
+      return { success: false, error: 'Sin insight', email: userData.email };
+    }
+    
+    const updated = updateMailchimpMergeField(userData.email, insight, userData);
+    
+    if (updated) {
+      addMailchimpTag(userData.email, 'insight_generado');
+      logDetailed(`✅ Enviado exitosamente`);
+      return { success: true, email: userData.email };
+    }
+    
+    logDetailed(`❌ Error al actualizar`);
+    return { success: false, error: 'Error al actualizar Mailchimp', email: userData.email };
+    
+  } catch (error) {
+    logDetailed(`❌ Excepción: ${error}`);
+    return { success: false, error: error.toString(), email: 'desconocido' };
+  }
+}
+
+// ============================================================================
+// TRIGGER AUTOMÁTICO
+// ============================================================================
+
+function onFormSubmit(e) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME_DATA);
+    const lastRow = sheet.getLastRow();
+    const insightCell = sheet.getRange(lastRow, CONFIG.COLUMNS.INSIGHT + 1);
+    
+    if (insightCell.getValue() !== '') {
+      Logger.log('Esta fila ya tiene insight');
+      return;
+    }
+    
+    const rowData = sheet.getRange(lastRow, 1, 1, CONFIG.COLUMNS.INSIGHT + 1).getValues()[0];
+    const userData = extractUserData(rowData);
+    const ratios = calculateRatios(userData);
+    const insight = generateInsight(userData, ratios);
+    
+    insightCell.setValue(insight);
+    
+    const email = rowData[CONFIG.COLUMNS.EMAIL];
+    if (email && email.includes('@')) {
+      Utilities.sleep(2000);
+      ensureMergeFieldExists();
+      const updated = updateMailchimpMergeField(email, insight, userData);
+      if (updated) {
+        addMailchimpTag(email, 'insight_generado');
+        Logger.log('✅ Mailchimp actualizado: ' + email);
+      }
+    }
+    
+  } catch (error) {
+    Logger.log('ERROR: ' + error.toString());
+  }
+}
+
+// ============================================================================
+// EXTRACCIÓN Y CÁLCULO DE DATOS
+// ============================================================================
+
+function extractUserData(rowData) {
+  return {
+    email: rowData[CONFIG.COLUMNS.EMAIL],
+    edad: rowData[CONFIG.COLUMNS.EDAD],
+    genero: rowData[CONFIG.COLUMNS.GENERO],
+    situacion_laboral: rowData[CONFIG.COLUMNS.SITUACION_LABORAL],
+    unidad_familiar: rowData[CONFIG.COLUMNS.UNIDAD_FAMILIAR],
+    satisfaccion_financiera: rowData[CONFIG.COLUMNS.SATISFACCION],
+    preocupacion_dinero: rowData[CONFIG.COLUMNS.PREOCUPACION_DINERO],
+    llegar_fin_mes: rowData[CONFIG.COLUMNS.LLEGAR_FIN_MES],
+    estabilidad: rowData[CONFIG.COLUMNS.ESTABILIDAD],
+    control_dinero: rowData[CONFIG.COLUMNS.CONTROL_DINERO],
+    ingresos_brutos: rowData[CONFIG.COLUMNS.INGRESOS_BRUTOS],
+    porcentaje_ahorro: rowData[CONFIG.COLUMNS.PORCENTAJE_AHORRO],
+    colchon_liquido: rowData[CONFIG.COLUMNS.COLCHON_LIQUIDO],
+    gasto_vivienda: rowData[CONFIG.COLUMNS.GASTO_VIVIENDA],
+    porcentaje_deuda: rowData[CONFIG.COLUMNS.PORCENTAJE_DEUDA],
+    capacidad_recorte: rowData[CONFIG.COLUMNS.CAPACIDAD_RECORTE],
+    control_gastos: rowData[CONFIG.COLUMNS.CONTROL_GASTOS],
+    presupuesto: rowData[CONFIG.COLUMNS.PRESUPUESTO],
+    manejo_imprevistos: rowData[CONFIG.COLUMNS.MANEJO_IMPREVISTOS]
+  };
+}
+
+function calculateRatios(userData) {
+  const ratios = {
+    ratio_ahorro: null,
+    meses_colchon: null,
+    ratio_vivienda: null,
+    ratio_deuda: null,
+    capacidad_reaccion: null,
+    es_cuenta_ajena: userData.situacion_laboral === 'Trabajo por cuenta ajena'
+  };
+  
+  const ingresosNetos = estimarIngresosNetosMensuales(userData.ingresos_brutos);
+  
+  ratios.ratio_ahorro = parseRangoAhorro(userData.porcentaje_ahorro);
+  ratios.meses_colchon = parseMesesColchon(userData.colchon_liquido, ingresosNetos);
+  ratios.ratio_vivienda = parseRatioVivienda(userData.gasto_vivienda);
+  ratios.ratio_deuda = parseRatioDeuda(userData.porcentaje_deuda);
+  ratios.capacidad_reaccion = parseCapacidadRecorte(userData.capacidad_recorte);
+  ratios.ingresos_netos_mensuales = ingresosNetos;
+  
+  return ratios;
+}
+
+function estimarIngresosNetosMensuales(ingresosBrutos) {
+  const rangos = {
+    'Menos de 12.000 €': 10000,
+    'Entre 12.000 y 21.000 €': 16500,
+    'Entre 21.000 y 30.000 €': 25500,
+    'Entre 30.000 y 60.000 €': 45000,
+    'Entre 60.000 y 90.000 €': 75000,
+    'Entre 90.000 y 120.000 €': 105000,
+    'Más de 120.000 €': 150000
+  };
+  
+  const brutoAnual = rangos[ingresosBrutos] || 30000;
+  let retencion = 0.15;
+  if (brutoAnual > 60000) retencion = 0.25;
+  if (brutoAnual > 100000) retencion = 0.30;
+  
+  return Math.round((brutoAnual * (1 - retencion)) / 12);
+}
+
+function parseRangoAhorro(texto) {
+  if (!texto) return 10;
+  if (texto.includes('No ahorro')) return 0;
+  if (texto.includes('Menos del 10%')) return 5;
+  if (texto.includes('10%') && texto.includes('30%')) return 20;
+  if (texto.includes('30%') && texto.includes('40%')) return 35;
+  if (texto.includes('Más del 40%')) return 45;
+  return 10;
+}
+
+function parseMesesColchon(texto, ingresosNetos) {
+  if (!texto) return 0;
+  if (texto.includes('Mejor ni preguntes')) return 0;
+  if (texto.includes('Menos de 3 meses')) return 1.5;
+  if (texto.includes('Entre 3 y 6 meses')) return 4.5;
+  if (texto.includes('Más de 6 meses')) return 9;
+  return 0;
+}
+
+function parseRatioVivienda(texto) {
+  if (!texto) return 35;
+  if (texto.includes('Menos de un tercio') || texto.includes('33%')) return 28;
+  if (texto.includes('33%') && texto.includes('40%')) return 36.5;
+  if (texto.includes('40%') && texto.includes('50%')) return 45;
+  if (texto.includes('Más del 50%')) return 55;
+  return 35;
+}
+
+function parseRatioDeuda(texto) {
+  if (!texto) return 0;
+  if (texto.includes('No tengo deuda')) return 0;
+  if (texto.includes('Menos del 10%')) return 5;
+  if (texto.includes('10%') && texto.includes('20%')) return 15;
+  if (texto.includes('Más del 20%')) return 25;
+  return 0;
+}
+
+function parseCapacidadRecorte(texto) {
+  if (!texto) return 15;
+  if (texto.includes('No lo sé')) return 10;
+  if (texto.includes('Menos del 15%')) return 10;
+  if (texto.includes('15%') && texto.includes('25%')) return 20;
+  if (texto.includes('24%') && texto.includes('40%')) return 32;
+  if (texto.includes('Más del 40%')) return 45;
+  return 15;
+}
+
+// ============================================================================
+// GENERACIÓN DE INSIGHT CON OPENAI
+// ============================================================================
+
+function generateInsight(userData, ratios) {
+  try {
+    const prompts = getPromptsFromSheet();
+    const userPrompt = buildUserPromptFromTemplate(prompts.userPromptTemplate, userData, ratios);
+    
+    const response = UrlFetchApp.fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'post',
+      headers: {
+        'Authorization': 'Bearer ' + CONFIG.OPENAI_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify({
+        model: 'gpt-4',
+        messages: [
+          {
+            role: 'system',
+            content: prompts.systemPrompt
+          },
+          {
+            role: 'user',
+            content: userPrompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000
+      }),
+      muteHttpExceptions: true
+    });
+    
+    const result = JSON.parse(response.getContentText());
+    
+    if (result.error) {
+      Logger.log('Error OpenAI API: ' + JSON.stringify(result.error));
+      return 'Error al generar insight: ' + result.error.message;
+    }
+    
+    return result.choices[0].message.content;
+    
+  } catch (error) {
+    Logger.log('Error OpenAI: ' + error.toString());
+    return 'Error al generar insight. Revisa los logs.';
+  }
+}
+
+function buildUserPromptFromTemplate(template, userData, ratios) {
+  const umbralColchon = ratios.es_cuenta_ajena ? 
+    '- Colchón mínimo: 3 meses | Recomendable: 6 meses' : 
+    '- Colchón mínimo: 6 meses | Recomendable: 12 meses';
+  
+  return template
+    .replace(/\$\{userData\.edad\}/g, userData.edad || 'No especificado')
+    .replace(/\$\{userData\.situacion_laboral\}/g, userData.situacion_laboral || 'No especificado')
+    .replace(/\$\{userData\.unidad_familiar\}/g, userData.unidad_familiar || 'No especificado')
+    .replace(/\$\{ratios\.ratio_ahorro\}/g, ratios.ratio_ahorro || 0)
+    .replace(/\$\{ratios\.meses_colchon\}/g, ratios.meses_colchon || 0)
+    .replace(/\$\{ratios\.ratio_vivienda\}/g, ratios.ratio_vivienda || 0)
+    .replace(/\$\{ratios\.ratio_deuda\}/g, ratios.ratio_deuda || 0)
+    .replace(/\$\{ratios\.capacidad_reaccion\}/g, ratios.capacidad_reaccion || 0)
+    .replace(/\$\{ratios\.ingresos_netos_mensuales\}/g, ratios.ingresos_netos_mensuales || 0)
+    .replace(/\$\{userData\.satisfaccion_financiera\}/g, userData.satisfaccion_financiera || 'No especificado')
+    .replace(/\$\{userData\.preocupacion_dinero\}/g, userData.preocupacion_dinero || 'No especificado')
+    .replace(/\$\{userData\.llegar_fin_mes\}/g, userData.llegar_fin_mes || 'No especificado')
+    .replace(/\$\{userData\.control_gastos\}/g, userData.control_gastos || 'No especificado')
+    .replace(/\$\{userData\.presupuesto\}/g, userData.presupuesto || 'No especificado')
+    .replace(/\$\{ratios\.es_cuenta_ajena \? [^}]*\}/g, umbralColchon);
+}
+
+// ============================================================================
+// DIVISIÓN DE INSIGHT EN 3 PARTES (NUEVA FUNCIONALIDAD)
+// ============================================================================
+
+function dividirInsightParaMailchimp(insightCompleto) {
+  if (!insightCompleto || insightCompleto.trim() === '') {
+    return {
+      parte1: '',
+      parte2: '',
+      parte3: ''
+    };
+  }
+  
+  try {
+    // Limpiar el texto: quitar markdown y mantener solo texto plano
+    let textoLimpio = insightCompleto
+      .replace(/^# .*$/gm, '') // Quitar títulos
+      .replace(/\*\*(.*?)\*\*/g, '$1') // Quitar negritas
+      .replace(/---/g, '') // Quitar separadores
+      .replace(/\n{3,}/g, '\n\n') // Normalizar saltos de línea
+      .trim();
+    
+    // Detectar los 4 bloques
+    const bloquePattern = /\[BLOQUE \d+[:\]]/gi;
+    const partes = textoLimpio.split(bloquePattern);
+    
+    // Si no encuentra los bloques, dividir por párrafos
+    if (partes.length < 5) {
+      logDetailed('⚠️ No se encontraron los 4 bloques, dividiendo por párrafos...');
+      return dividirPorParrafos(textoLimpio);
+    }
+    
+    const bloque1 = partes[1] ? partes[1].trim() : '';
+    const bloque2 = partes[2] ? partes[2].trim() : '';
+    const bloque3 = partes[3] ? partes[3].trim() : '';
+    const bloque4 = partes[4] ? partes[4].trim() : '';
+    
+    // Parte 1: BLOQUE 1
+    let parte1 = bloque1;
+    
+    // Parte 2: BLOQUE 2
+    let parte2 = bloque2;
+    
+    // Parte 3: BLOQUES 3 + 4 + disclaimer
+    let parte3 = bloque3;
+    if (bloque4) {
+      parte3 += '\n\n' + bloque4;
+    }
+    
+    // Añadir disclaimer
+    parte3 += '\n\n---\n\nWeavers | Tu plataforma de bienestar financiero\n\nEste diagnóstico es orientativo y se basa en las respuestas proporcionadas. No constituye asesoramiento financiero personalizado.';
+    
+    // Verificar límites
+    parte1 = truncarSiNecesario(parte1, 250, 'Parte 1');
+    parte2 = truncarSiNecesario(parte2, 250, 'Parte 2');
+    parte3 = truncarSiNecesario(parte3, 250, 'Parte 3');
+    
+    logDetailed('✅ Insight dividido en 3 partes:');
+    logDetailed('  Parte 1: ' + parte1.length + ' chars');
+    logDetailed('  Parte 2: ' + parte2.length + ' chars');
+    logDetailed('  Parte 3: ' + parte3.length + ' chars');
+    
+    return {
+      parte1: parte1,
+      parte2: parte2,
+      parte3: parte3
+    };
+    
+  } catch (error) {
+    logDetailed('❌ Error al dividir insight: ' + error.toString());
+    return dividirPorParrafos(insightCompleto);
+  }
+}
+
+function dividirPorParrafos(texto) {
+  const parrafos = texto.split(/\n\n+/).filter(p => p.trim().length > 0);
+  
+  const totalParrafos = parrafos.length;
+  const tercio = Math.ceil(totalParrafos / 3);
+  
+  const parte1 = parrafos.slice(0, tercio).join('\n\n');
+  const parte2 = parrafos.slice(tercio, tercio * 2).join('\n\n');
+  const parte3 = parrafos.slice(tercio * 2).join('\n\n');
+  
+  logDetailed('⚠️ División por párrafos (fallback):');
+  logDetailed('  Parte 1: ' + parte1.length + ' chars');
+  logDetailed('  Parte 2: ' + parte2.length + ' chars');
+  logDetailed('  Parte 3: ' + parte3.length + ' chars');
+  
+  return {
+    parte1: truncarSiNecesario(parte1, 250, 'Parte 1'),
+    parte2: truncarSiNecesario(parte2, 250, 'Parte 2'),
+    parte3: truncarSiNecesario(parte3, 250, 'Parte 3')
+  };
+}
+
+function truncarSiNecesario(texto, maxChars, nombreParte) {
+  if (texto.length <= maxChars) {
+    return texto;
+  }
+  
+  logDetailed('⚠️ ' + nombreParte + ' supera ' + maxChars + ' chars (' + texto.length + '), truncando...');
+  
+  const textoCorto = texto.substring(0, maxChars);
+  const ultimoPunto = textoCorto.lastIndexOf('.');
+  
+  if (ultimoPunto > maxChars * 0.7) {
+    return textoCorto.substring(0, ultimoPunto + 1).trim();
+  }
+  
+  return textoCorto.substring(0, maxChars - 3).trim() + '...';
+}
+
+// ============================================================================
+// INTEGRACIÓN MAILCHIMP - VERSIÓN MODIFICADA CON 3 CAMPOS
+// ============================================================================
+
+function ensureMergeFieldExists() {
+  try {
+    logDetailed('🔍 Verificando merge fields (3 campos)...');
+    
+    const url = `https://${CONFIG.MAILCHIMP_SERVER}.api.mailchimp.com/3.0/lists/${CONFIG.MAILCHIMP_LIST_ID}/merge-fields`;
+    
+    const response = UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: {
+        'Authorization': 'Bearer ' + CONFIG.MAILCHIMP_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      muteHttpExceptions: true
+    });
+    
+    if (response.getResponseCode() !== 200) {
+      logDetailed('❌ Error al obtener merge fields: ' + response.getContentText());
+      return null;
+    }
+    
+    const result = JSON.parse(response.getContentText());
+    
+    const campo1 = result.merge_fields.find(field => field.tag === 'INSIGHT1');
+    const campo2 = result.merge_fields.find(field => field.tag === 'INSIGHT2');
+    const campo3 = result.merge_fields.find(field => field.tag === 'INSIGHT3');
+    
+    let creados = 0;
+    
+    if (!campo1) {
+      logDetailed('⚠️ INSIGHT1 no existe, creando...');
+      createMergeFieldCustom('INSIGHT1', 'Insight Parte 1');
+      creados++;
+    } else {
+      logDetailed('✅ INSIGHT1 existe');
+    }
+    
+    if (!campo2) {
+      logDetailed('⚠️ INSIGHT2 no existe, creando...');
+      createMergeFieldCustom('INSIGHT2', 'Insight Parte 2');
+      creados++;
+    } else {
+      logDetailed('✅ INSIGHT2 existe');
+    }
+    
+    if (!campo3) {
+      logDetailed('⚠️ INSIGHT3 no existe, creando...');
+      createMergeFieldCustom('INSIGHT3', 'Insight Parte 3');
+      creados++;
+    } else {
+      logDetailed('✅ INSIGHT3 existe');
+    }
+    
+    if (creados > 0) {
+      logDetailed('✅ ' + creados + ' campos creados');
+    }
+    
+    return true;
+    
+  } catch (error) {
+    logDetailed('❌ Error verificar merge fields: ' + error);
+    return false;
+  }
+}
+
+function createMergeFieldCustom(tag, name) {
+  try {
+    const url = `https://${CONFIG.MAILCHIMP_SERVER}.api.mailchimp.com/3.0/lists/${CONFIG.MAILCHIMP_LIST_ID}/merge-fields`;
+    
+    const payload = {
+      tag: tag,
+      name: name,
+      type: 'text',
+      required: false,
+      public: false
+    };
+    
+    const response = UrlFetchApp.fetch(url, {
+      method: 'post',
+      headers: {
+        'Authorization': 'Bearer ' + CONFIG.MAILCHIMP_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+    
+    const code = response.getResponseCode();
+    
+    if (code === 200 || code === 201) {
+      logDetailed('✅ Merge field creado: ' + tag);
+      return true;
+    } else {
+      logDetailed('❌ Error crear ' + tag + ': ' + response.getContentText());
+      return false;
+    }
+    
+  } catch (error) {
+    logDetailed('❌ Error crear ' + tag + ': ' + error);
+    return false;
+  }
+}
+
+function updateMailchimpMergeField(email, insightContent, userData) {
+  try {
+    const emailNormalizado = email.toLowerCase().trim();
+    const subscriberHash = generateMD5Hash(emailNormalizado);
+    
+    logDetailed('📧 Email: ' + emailNormalizado);
+    logDetailed('🔐 Hash: ' + subscriberHash);
+    
+    const url = `https://${CONFIG.MAILCHIMP_SERVER}.api.mailchimp.com/3.0/lists/${CONFIG.MAILCHIMP_LIST_ID}/members/${subscriberHash}`;
+    
+    // ✨ DIVIDIR EL INSIGHT EN 3 PARTES (TEXTO PLANO)
+    const partes = dividirInsightParaMailchimp(insightContent);
+    
+    const emailName = emailNormalizado.split('@')[0];
+    const firstName = emailName.charAt(0).toUpperCase() + emailName.slice(1);
+    
+    const mergeFields = {
+      FNAME: firstName,
+      INSIGHT1: partes.parte1,
+      INSIGHT2: partes.parte2,
+      INSIGHT3: partes.parte3
+    };
+    
+    const payload = {
+      email_address: emailNormalizado,
+      status_if_new: 'subscribed',
+      status: 'subscribed',
+      merge_fields: mergeFields
+    };
+    
+    logDetailed('📦 Payload preparado con 3 partes (texto plano)');
+    
+    const options = {
+      method: 'put',
+      headers: {
+        'Authorization': 'Bearer ' + CONFIG.MAILCHIMP_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+    
+    const response = UrlFetchApp.fetch(url, options);
+    const responseCode = response.getResponseCode();
+    const responseText = response.getContentText();
+    
+    logDetailed('📊 Response Code: ' + responseCode);
+    
+    if (responseCode === 200) {
+      const result = JSON.parse(responseText);
+      logDetailed('✅ Mailchimp actualizado - Status: ' + result.status);
+      
+      Utilities.sleep(500);
+      activarConsentimientoGDPR(emailNormalizado, subscriberHash);
+      
+      return true;
+    } else {
+      logDetailed('❌ Error Mailchimp: ' + responseText);
+      return false;
+    }
+    
+  } catch (error) {
+    logDetailed('❌ Excepción Mailchimp: ' + error.toString());
+    return false;
+  }
+}
+
+function activarConsentimientoGDPR(email, subscriberHash) {
+  try {
+    const memberUrl = `https://${CONFIG.MAILCHIMP_SERVER}.api.mailchimp.com/3.0/lists/${CONFIG.MAILCHIMP_LIST_ID}/members/${subscriberHash}`;
+    
+    const getMemberResponse = UrlFetchApp.fetch(memberUrl, {
+      method: 'get',
+      headers: {
+        'Authorization': 'Bearer ' + CONFIG.MAILCHIMP_API_KEY
+      },
+      muteHttpExceptions: true
+    });
+    
+    if (getMemberResponse.getResponseCode() !== 200) {
+      logDetailed('⚠️ No se pudo obtener datos para GDPR');
+      return false;
+    }
+    
+    const memberData = JSON.parse(getMemberResponse.getContentText());
+    
+    if (!memberData.marketing_permissions || memberData.marketing_permissions.length === 0) {
+      logDetailed('ℹ️ No hay marketing permissions configurados');
+      return false;
+    }
+    
+    const marketingPermissions = memberData.marketing_permissions.map(permission => ({
+      marketing_permission_id: permission.marketing_permission_id,
+      enabled: true
+    }));
+    
+    const updatePayload = {
+      marketing_permissions: marketingPermissions
+    };
+    
+    const updateResponse = UrlFetchApp.fetch(memberUrl, {
+      method: 'patch',
+      headers: {
+        'Authorization': 'Bearer ' + CONFIG.MAILCHIMP_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify(updatePayload),
+      muteHttpExceptions: true
+    });
+    
+    if (updateResponse.getResponseCode() === 200) {
+      logDetailed('✅ GDPR activado');
+      return true;
+    } else {
+      logDetailed('⚠️ Error al activar GDPR: ' + updateResponse.getContentText());
+      return false;
+    }
+    
+  } catch (error) {
+    logDetailed('❌ Error en GDPR: ' + error.toString());
+    return false;
+  }
+}
+
+function addMailchimpTag(email, tagName) {
+  try {
+    const emailNormalizado = email.toLowerCase().trim();
+    const subscriberHash = generateMD5Hash(emailNormalizado);
+    
+    const tagUrl = `https://${CONFIG.MAILCHIMP_SERVER}.api.mailchimp.com/3.0/lists/${CONFIG.MAILCHIMP_LIST_ID}/members/${subscriberHash}/tags`;
+    
+    const payload = {
+      tags: [{
+        name: tagName,
+        status: 'active'
+      }]
+    };
+    
+    const options = {
+      method: 'post',
+      headers: {
+        'Authorization': 'Bearer ' + CONFIG.MAILCHIMP_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+    
+    const response = UrlFetchApp.fetch(tagUrl, options);
+    
+    if (response.getResponseCode() === 204) {
+      logDetailed('✅ Tag añadido: ' + tagName);
+      return true;
+    } else {
+      logDetailed('⚠️ Error al añadir tag: ' + response.getContentText());
+      return false;
+    }
+    
+  } catch (error) {
+    logDetailed('❌ Error tag: ' + error);
+    return false;
+  }
+}
+
+// ============================================================================
+// FUNCIONES DE CONFIGURACIÓN Y PRUEBA
+// ============================================================================
+
+function setupTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => ScriptApp.deleteTrigger(trigger));
+  
+  ScriptApp.newTrigger('onFormSubmit')
+    .forSpreadsheet(SpreadsheetApp.getActive())
+    .onFormSubmit()
+    .create();
+  
+  ensureMergeFieldExists();
+  
+  SpreadsheetApp.getUi().alert('✅ Trigger configurado!\n\nYa funciona automáticamente con los 3 campos de insight.');
+}
+
+function testScript() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME_DATA);
+  const lastRow = sheet.getLastRow();
+  
+  const rowData = sheet.getRange(lastRow, 1, 1, CONFIG.COLUMNS.INSIGHT + 1).getValues()[0];
+  const userData = extractUserData(rowData);
+  const ratios = calculateRatios(userData);
+  
+  Logger.log('=== DATOS EXTRAÍDOS ===');
+  Logger.log('Email: ' + userData.email);
+  Logger.log('Edad: ' + userData.edad);
+  Logger.log('Situación laboral: ' + userData.situacion_laboral);
+  
+  Logger.log('\n=== RATIOS CALCULADOS ===');
+  Logger.log(JSON.stringify(ratios, null, 2));
+  
+  const insight = generateInsight(userData, ratios);
+  Logger.log('\n=== INSIGHT GENERADO ===');
+  Logger.log(insight);
+  
+  if (userData.email) {
+    Logger.log('\n=== ENVIANDO A MAILCHIMP (3 PARTES) ===');
+    ensureMergeFieldExists();
+    const result = updateMailchimpMergeField(userData.email, insight, userData);
+    Logger.log('Resultado: ' + (result ? 'ÉXITO' : 'ERROR'));
+  }
+  
+  SpreadsheetApp.getUi().alert('✅ Prueba completada\n\nEl insight se dividió en 3 partes.\nRevisa los logs (Ver > Registros de ejecución)');
+}
+
+function testMergeFieldCreation() {
+  const result = ensureMergeFieldExists();
+  
+  if (result) {
+    SpreadsheetApp.getUi().alert('✅ Merge fields OK!\n\nUsa *|INSIGHT1|*, *|INSIGHT2|*, *|INSIGHT3|* en Mailchimp.');
+  } else {
+    SpreadsheetApp.getUi().alert('❌ Error. Revisa los logs.');
+  }
+}
+
+function testMailchimpConnection() {
+  try {
+    const url = `https://${CONFIG.MAILCHIMP_SERVER}.api.mailchimp.com/3.0/lists/${CONFIG.MAILCHIMP_LIST_ID}`;
+    
+    const response = UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: {
+        'Authorization': 'Bearer ' + CONFIG.MAILCHIMP_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      muteHttpExceptions: true
+    });
+    
+    const code = response.getResponseCode();
+    
+    if (code === 200) {
+      const result = JSON.parse(response.getContentText());
+      SpreadsheetApp.getUi().alert(
+        '✅ Conexión exitosa\n\n' +
+        'Lista: ' + result.name + '\n' +
+        'Miembros: ' + result.stats.member_count
+      );
+    } else {
+      SpreadsheetApp.getUi().alert(
+        '❌ Error de conexión\n\n' +
+        'Código: ' + code + '\n' +
+        'Respuesta: ' + response.getContentText()
+      );
+    }
+    
+  } catch (error) {
+    SpreadsheetApp.getUi().alert('❌ Error: ' + error.toString());
+  }
 }
