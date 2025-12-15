@@ -13,6 +13,9 @@ function onOpen() {
     .addItem('📧 Enviar a Mailchimp (Filas Seleccionadas)', 'sendToMailchimpSelection')
     .addItem('📧 Enviar a Mailchimp (Todas con Insight)', 'sendToMailchimpAll')
     .addSeparator()
+    .addItem('📬 Enviar Emails (Filas Seleccionadas)', 'enviarEmailsSelection')
+    .addItem('📬 Enviar Emails (Todos con Insight)', 'enviarEmailsAllPendientes')
+    .addSeparator()
     .addItem('🧪 Probar Script con Última Fila', 'testScript')
     .addItem('🧪 Verificar Merge Field en Mailchimp', 'testMergeFieldCreation')
     .addItem('🧪 Probar Conexión Mailchimp', 'testMailchimpConnection')
@@ -294,11 +297,12 @@ function debugMailchimpSend() {
     const updated = updateMailchimpMergeField(emailNormalizado, insight, userData);
     
     if (updated) {
-      addMailchimpTag(emailNormalizado, 'insight_generado');
-      
+      addMailchimpTag(emailNormalizado, CONFIG.TAG_PENDIENTE);
+
       ui.alert('✅ ÉXITO\n\n' +
                'Email: ' + emailNormalizado + '\n' +
-               'El insight se dividió en 3 partes\n\n' +
+               'El insight se dividió en 3 partes\n' +
+               'Tag añadido: ' + CONFIG.TAG_PENDIENTE + '\n\n' +
                'Revisa los logs para ver los detalles.');
       
       Utilities.sleep(2000);
@@ -638,10 +642,10 @@ function processRowMailchimp(sheet, rowNumber) {
     }
     
     const updated = updateMailchimpMergeField(userData.email, insight, userData);
-    
+
     if (updated) {
-      addMailchimpTag(userData.email, 'insight_generado');
-      logDetailed(`✅ Enviado exitosamente`);
+      addMailchimpTag(userData.email, CONFIG.TAG_PENDIENTE);
+      logDetailed(`✅ Enviado exitosamente con tag: ${CONFIG.TAG_PENDIENTE}`);
       return { success: true, email: userData.email };
     }
     
@@ -682,8 +686,8 @@ function onFormSubmit(e) {
       ensureMergeFieldExists();
       const updated = updateMailchimpMergeField(email, insight, userData);
       if (updated) {
-        addMailchimpTag(email, 'insight_generado');
-        Logger.log('✅ Mailchimp actualizado: ' + email);
+        addMailchimpTag(email, CONFIG.TAG_PENDIENTE);
+        Logger.log('✅ Mailchimp actualizado con tag ' + CONFIG.TAG_PENDIENTE + ': ' + email);
       }
     }
     
@@ -1226,16 +1230,16 @@ function addMailchimpTag(email, tagName) {
   try {
     const emailNormalizado = email.toLowerCase().trim();
     const subscriberHash = generateMD5Hash(emailNormalizado);
-    
+
     const tagUrl = `https://${CONFIG.MAILCHIMP_SERVER}.api.mailchimp.com/3.0/lists/${CONFIG.MAILCHIMP_LIST_ID}/members/${subscriberHash}/tags`;
-    
+
     const payload = {
       tags: [{
         name: tagName,
         status: 'active'
       }]
     };
-    
+
     const options = {
       method: 'post',
       headers: {
@@ -1245,9 +1249,9 @@ function addMailchimpTag(email, tagName) {
       payload: JSON.stringify(payload),
       muteHttpExceptions: true
     };
-    
+
     const response = UrlFetchApp.fetch(tagUrl, options);
-    
+
     if (response.getResponseCode() === 204) {
       logDetailed('✅ Tag añadido: ' + tagName);
       return true;
@@ -1255,10 +1259,205 @@ function addMailchimpTag(email, tagName) {
       logDetailed('⚠️ Error al añadir tag: ' + response.getContentText());
       return false;
     }
-    
+
   } catch (error) {
     logDetailed('❌ Error tag: ' + error);
     return false;
+  }
+}
+
+function removeMailchimpTag(email, tagName) {
+  try {
+    const emailNormalizado = email.toLowerCase().trim();
+    const subscriberHash = generateMD5Hash(emailNormalizado);
+
+    const tagUrl = `https://${CONFIG.MAILCHIMP_SERVER}.api.mailchimp.com/3.0/lists/${CONFIG.MAILCHIMP_LIST_ID}/members/${subscriberHash}/tags`;
+
+    const payload = {
+      tags: [{
+        name: tagName,
+        status: 'inactive'
+      }]
+    };
+
+    const options = {
+      method: 'post',
+      headers: {
+        'Authorization': 'Bearer ' + CONFIG.MAILCHIMP_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    const response = UrlFetchApp.fetch(tagUrl, options);
+
+    if (response.getResponseCode() === 204) {
+      logDetailed('✅ Tag eliminado: ' + tagName);
+      return true;
+    } else {
+      logDetailed('⚠️ Error al eliminar tag: ' + response.getContentText());
+      return false;
+    }
+
+  } catch (error) {
+    logDetailed('❌ Error al eliminar tag: ' + error);
+    return false;
+  }
+}
+
+// ============================================================================
+// FUNCIONES PARA ENVIAR EMAILS CON GMAIL
+// ============================================================================
+
+function enviarEmailsSelection() {
+  const ui = SpreadsheetApp.getUi();
+
+  if (CONFIG.PLANTILLA_HTML_FILE_ID === 'TU_FILE_ID_AQUI') {
+    ui.alert('⚠️ CONFIGURACIÓN INCOMPLETA\n\n' +
+             'Debes configurar PLANTILLA_HTML_FILE_ID en CONFIG');
+    return;
+  }
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME_DATA);
+  const selection = sheet.getActiveRange();
+
+  if (!selection) {
+    ui.alert('❌ Selecciona las filas cuyos emails deseas enviar.');
+    return;
+  }
+
+  const firstRow = selection.getRow();
+  const numRows = selection.getNumRows();
+
+  const response = ui.alert(
+    'Enviar Emails',
+    `¿Enviar ${numRows} email(s) con insights?\nFilas: ${firstRow} a ${firstRow + numRows - 1}`,
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) return;
+
+  let sent = 0;
+  let errors = 0;
+  let details = [];
+
+  for (let i = 0; i < numRows; i++) {
+    try {
+      const result = processRowEmail(sheet, firstRow + i);
+      if (result.success) {
+        sent++;
+        details.push(`✅ Fila ${firstRow + i}: ${result.email}`);
+      } else {
+        errors++;
+        details.push(`❌ Fila ${firstRow + i}: ${result.error}`);
+      }
+    } catch (error) {
+      Logger.log(`Error fila ${firstRow + i}: ${error}`);
+      errors++;
+      details.push(`❌ Fila ${firstRow + i}: ${error.toString()}`);
+    }
+    Utilities.sleep(1000); // Evitar límite de rate
+  }
+
+  Logger.log(details.join('\n'));
+  ui.alert('✅ Completado', `Enviados: ${sent}\nErrores: ${errors}\n\nRevisa los logs para detalles.`, ui.ButtonSet.OK);
+}
+
+function enviarEmailsAllPendientes() {
+  const ui = SpreadsheetApp.getUi();
+
+  if (CONFIG.PLANTILLA_HTML_FILE_ID === 'TU_FILE_ID_AQUI') {
+    ui.alert('⚠️ CONFIGURACIÓN INCOMPLETA\n\n' +
+             'Debes configurar PLANTILLA_HTML_FILE_ID en CONFIG');
+    return;
+  }
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME_DATA);
+  const lastRow = sheet.getLastRow();
+
+  // Buscar todas las filas con insight
+  const rowsWithInsight = [];
+  for (let i = 2; i <= lastRow; i++) {
+    const insight = sheet.getRange(i, CONFIG.COLUMNS.INSIGHT + 1).getValue();
+    if (insight && insight.trim() !== '') {
+      rowsWithInsight.push(i);
+    }
+  }
+
+  if (rowsWithInsight.length === 0) {
+    ui.alert('ℹ️ No hay filas con insights para enviar');
+    return;
+  }
+
+  const response = ui.alert(
+    'Enviar Emails a Todos',
+    `${rowsWithInsight.length} contactos con insights.\n¿Enviar emails a todos?`,
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) return;
+
+  let sent = 0;
+  let errors = 0;
+
+  for (let i = 0; i < rowsWithInsight.length; i++) {
+    try {
+      const result = processRowEmail(sheet, rowsWithInsight[i]);
+      if (result.success) {
+        sent++;
+      } else {
+        errors++;
+      }
+    } catch (error) {
+      Logger.log(`Error fila ${rowsWithInsight[i]}: ${error}`);
+      errors++;
+    }
+    Utilities.sleep(1000); // Evitar límite de rate
+  }
+
+  ui.alert('✅ Completado', `Enviados: ${sent}\nErrores: ${errors}`, ui.ButtonSet.OK);
+}
+
+function processRowEmail(sheet, rowNumber) {
+  try {
+    logDetailed(`\n📧 Procesando envío de email fila ${rowNumber}`);
+
+    const rowData = sheet.getRange(rowNumber, 1, 1, CONFIG.COLUMNS.INSIGHT + 1).getValues()[0];
+    const userData = extractUserData(rowData);
+    const insight = rowData[CONFIG.COLUMNS.INSIGHT];
+
+    logDetailed(`Email: ${userData.email}`);
+    logDetailed(`Insight length: ${insight ? insight.length : 0}`);
+
+    if (!userData.email || !userData.email.includes('@')) {
+      logDetailed(`❌ Email inválido`);
+      return { success: false, error: 'Email inválido', email: userData.email };
+    }
+
+    if (!insight || insight.trim() === '') {
+      logDetailed(`❌ Sin insight`);
+      return { success: false, error: 'Sin insight', email: userData.email };
+    }
+
+    // Enviar email usando la función de "Envio de emails.js"
+    const emailSent = enviarEmailInsight(userData.email, insight, userData);
+
+    if (emailSent) {
+      // Actualizar tags en Mailchimp
+      removeMailchimpTag(userData.email, CONFIG.TAG_PENDIENTE);
+      addMailchimpTag(userData.email, CONFIG.TAG_ENVIADO);
+
+      logDetailed(`✅ Email enviado y tags actualizados`);
+      return { success: true, email: userData.email };
+    }
+
+    logDetailed(`❌ Error al enviar email`);
+    return { success: false, error: 'Error al enviar email', email: userData.email };
+
+  } catch (error) {
+    logDetailed(`❌ Excepción: ${error}`);
+    return { success: false, error: error.toString(), email: 'desconocido' };
   }
 }
 
