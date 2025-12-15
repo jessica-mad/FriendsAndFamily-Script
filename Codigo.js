@@ -715,6 +715,7 @@ function extractUserData(rowData) {
     ingresos_brutos: rowData[CONFIG.COLUMNS.INGRESOS_BRUTOS],
     porcentaje_ahorro: rowData[CONFIG.COLUMNS.PORCENTAJE_AHORRO],
     colchon_liquido: rowData[CONFIG.COLUMNS.COLCHON_LIQUIDO],
+    vivienda_principal: rowData[CONFIG.COLUMNS.VIVIENDA_PRINCIPAL],
     gasto_vivienda: rowData[CONFIG.COLUMNS.GASTO_VIVIENDA],
     porcentaje_deuda: rowData[CONFIG.COLUMNS.PORCENTAJE_DEUDA],
     capacidad_recorte: rowData[CONFIG.COLUMNS.CAPACIDAD_RECORTE],
