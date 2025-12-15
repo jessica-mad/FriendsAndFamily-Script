@@ -3,6 +3,14 @@
 // ============================================================================
 
 /**
+ * Función de logging compatible
+ */
+function log(message) {
+  Logger.log(message);
+  console.log(message);
+}
+
+/**
  * Lee la plantilla HTML desde Google Drive
  */
 function obtenerPlantillaHTML() {
