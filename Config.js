@@ -4,8 +4,8 @@
 
 const CONFIG = {
   // API Keys
-  OPENAI_API_KEY: 'xxx',
-  MAILCHIMP_API_KEY: 'xx',
+  OPENAI_API_KEY: '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',
+  MAILCHIMP_API_KEY: 'c8a03fc2d16683b16a3ca2401dd0e7bc-us20',
   MAILCHIMP_SERVER: 'us20',
   MAILCHIMP_LIST_ID: '41cb9ab9e2', // Modificar con tu List ID
 
