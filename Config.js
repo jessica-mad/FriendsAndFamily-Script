@@ -22,7 +22,7 @@ const CONFIG = {
   EMAIL_ASUNTO: 'Tu diagnóstico financiero personalizado está listo',
 
   // NUEVO: Plantilla HTML
-  PLANTILLA_HTML_FILE_ID: '1av_w0EMsnHFmW-jSRgblZ12RXtU7sl4',  // ID del archivo HTML en Drive
+  PLANTILLA_HTML_FILE_ID: '1av_w0EMsnHFmW-jSRgbdlZ12RXtU7sl4',  // ID del archivo HTML en Drive
 
   // Tags Mailchimp
   TAG_PENDIENTE: 'insight-pendiente',
