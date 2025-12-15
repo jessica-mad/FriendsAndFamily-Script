@@ -2,7 +2,19 @@
 // MENÚ PERSONALIZADO
 // ============================================================================
 
+/**
+ * Trigger automático que se ejecuta al abrir el Google Sheets
+ * NO ejecutar manualmente - se activa automáticamente al abrir el documento
+ */
 function onOpen() {
+  instalarMenu();
+}
+
+/**
+ * Función para instalar el menú manualmente
+ * Ejecutar esta función desde el editor de scripts si el menú no aparece
+ */
+function instalarMenu() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('🤖 Weavers Automation')
     .addItem('⚙️ Configurar Trigger Automático', 'setupTrigger')
@@ -23,6 +35,8 @@ function onOpen() {
     .addItem('🔍 Debug: Probar envío a Mailchimp con logs', 'debugMailchimpSend')
     .addItem('🔍 Buscar contacto específico en Mailchimp', 'searchMemberInMailchimp')
     .addToUi();
+
+  SpreadsheetApp.getUi().alert('✅ Menú instalado correctamente\n\nYa puedes usar "🤖 Weavers Automation" en la barra de menú.');
 }
 
 function searchMemberInMailchimp() {
