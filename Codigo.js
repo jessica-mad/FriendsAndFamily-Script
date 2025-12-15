@@ -876,26 +876,52 @@ function generateInsight(userData, ratios) {
 }
 
 function buildUserPromptFromTemplate(template, userData, ratios) {
-  const umbralColchon = ratios.es_cuenta_ajena ? 
-    '- Colchón mínimo: 3 meses | Recomendable: 6 meses' : 
+  const umbralColchon = ratios.es_cuenta_ajena ?
+    '- Colchón mínimo: 3 meses | Recomendable: 6 meses' :
     '- Colchón mínimo: 6 meses | Recomendable: 12 meses';
-  
+
+  // Soportar tanto ${variable} como {{variable}}
   return template
+    // Variables de userData
     .replace(/\$\{userData\.edad\}/g, userData.edad || 'No especificado')
+    .replace(/\{\{userData\.edad\}\}/g, userData.edad || 'No especificado')
     .replace(/\$\{userData\.situacion_laboral\}/g, userData.situacion_laboral || 'No especificado')
+    .replace(/\{\{userData\.situacion_laboral\}\}/g, userData.situacion_laboral || 'No especificado')
     .replace(/\$\{userData\.unidad_familiar\}/g, userData.unidad_familiar || 'No especificado')
-    .replace(/\$\{ratios\.ratio_ahorro\}/g, ratios.ratio_ahorro || 0)
-    .replace(/\$\{ratios\.meses_colchon\}/g, ratios.meses_colchon || 0)
-    .replace(/\$\{ratios\.ratio_vivienda\}/g, ratios.ratio_vivienda || 0)
-    .replace(/\$\{ratios\.ratio_deuda\}/g, ratios.ratio_deuda || 0)
-    .replace(/\$\{ratios\.capacidad_reaccion\}/g, ratios.capacidad_reaccion || 0)
-    .replace(/\$\{ratios\.ingresos_netos_mensuales\}/g, ratios.ingresos_netos_mensuales || 0)
+    .replace(/\{\{userData\.unidad_familiar\}\}/g, userData.unidad_familiar || 'No especificado')
     .replace(/\$\{userData\.satisfaccion_financiera\}/g, userData.satisfaccion_financiera || 'No especificado')
+    .replace(/\{\{userData\.satisfaccion_financiera\}\}/g, userData.satisfaccion_financiera || 'No especificado')
     .replace(/\$\{userData\.preocupacion_dinero\}/g, userData.preocupacion_dinero || 'No especificado')
+    .replace(/\{\{userData\.preocupacion_dinero\}\}/g, userData.preocupacion_dinero || 'No especificado')
     .replace(/\$\{userData\.llegar_fin_mes\}/g, userData.llegar_fin_mes || 'No especificado')
+    .replace(/\{\{userData\.llegar_fin_mes\}\}/g, userData.llegar_fin_mes || 'No especificado')
     .replace(/\$\{userData\.control_gastos\}/g, userData.control_gastos || 'No especificado')
+    .replace(/\{\{userData\.control_gastos\}\}/g, userData.control_gastos || 'No especificado')
     .replace(/\$\{userData\.presupuesto\}/g, userData.presupuesto || 'No especificado')
-    .replace(/\$\{ratios\.es_cuenta_ajena \? [^}]*\}/g, umbralColchon);
+    .replace(/\{\{userData\.presupuesto\}\}/g, userData.presupuesto || 'No especificado')
+    .replace(/\$\{userData\.vivienda_principal\}/g, userData.vivienda_principal || 'No especificado')
+    .replace(/\{\{userData\.vivienda_principal\}\}/g, userData.vivienda_principal || 'No especificado')
+    // Variables de ratios
+    .replace(/\$\{ratios\.ratio_ahorro\}/g, ratios.ratio_ahorro || 0)
+    .replace(/\{\{ratios\.ratio_ahorro\}\}/g, ratios.ratio_ahorro || 0)
+    .replace(/\{\{ratio_ahorro\}\}/g, ratios.ratio_ahorro || 0)
+    .replace(/\$\{ratios\.meses_colchon\}/g, ratios.meses_colchon || 0)
+    .replace(/\{\{ratios\.meses_colchon\}\}/g, ratios.meses_colchon || 0)
+    .replace(/\{\{meses_colchon\}\}/g, ratios.meses_colchon || 0)
+    .replace(/\$\{ratios\.ratio_vivienda\}/g, ratios.ratio_vivienda || 0)
+    .replace(/\{\{ratios\.ratio_vivienda\}\}/g, ratios.ratio_vivienda || 0)
+    .replace(/\{\{ratio_vivienda\}\}/g, ratios.ratio_vivienda || 0)
+    .replace(/\$\{ratios\.ratio_deuda\}/g, ratios.ratio_deuda || 0)
+    .replace(/\{\{ratios\.ratio_deuda\}\}/g, ratios.ratio_deuda || 0)
+    .replace(/\{\{ratio_deuda\}\}/g, ratios.ratio_deuda || 0)
+    .replace(/\$\{ratios\.capacidad_reaccion\}/g, ratios.capacidad_reaccion || 0)
+    .replace(/\{\{ratios\.capacidad_reaccion\}\}/g, ratios.capacidad_reaccion || 0)
+    .replace(/\{\{capacidad_reaccion\}\}/g, ratios.capacidad_reaccion || 0)
+    .replace(/\$\{ratios\.ingresos_netos_mensuales\}/g, ratios.ingresos_netos_mensuales || 0)
+    .replace(/\{\{ratios\.ingresos_netos_mensuales\}\}/g, ratios.ingresos_netos_mensuales || 0)
+    .replace(/\{\{ingresos_netos_mensuales\}\}/g, ratios.ingresos_netos_mensuales || 0)
+    .replace(/\$\{ratios\.es_cuenta_ajena \? [^}]*\}/g, umbralColchon)
+    .replace(/\{\{umbral_colchon\}\}/g, umbralColchon);
 }
 
 // ============================================================================
