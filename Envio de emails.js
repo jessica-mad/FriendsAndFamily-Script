@@ -58,7 +58,7 @@ function enviarEmailInsight(email, insight, userData) {
     log('📧 ENVIANDO EMAIL');
     log('📧 ═══════════════════════════════════════');
     log('Destinatario: ' + email);
-    
+
     // Obtener y personalizar plantilla
     const htmlTemplate = obtenerPlantillaHTML();
     const htmlPersonalizado = personalizarPlantilla(htmlTemplate, {
@@ -66,19 +66,22 @@ function enviarEmailInsight(email, insight, userData) {
       email: email,
       insight: insight
     });
-    
-    // Enviar email
-    MailApp.sendEmail({
-      to: email,
-      subject: CONFIG.EMAIL_ASUNTO,
-      htmlBody: htmlPersonalizado,
-      name: CONFIG.EMAIL_NOMBRE,
-      from: CONFIG.EMAIL_REMITENTE
-    });
-    
+
+    // Enviar email usando GmailApp para poder especificar el remitente
+    GmailApp.sendEmail(
+      email,                          // destinatario
+      CONFIG.EMAIL_ASUNTO,            // asunto
+      '',                             // cuerpo en texto plano (vacío)
+      {
+        htmlBody: htmlPersonalizado,
+        name: CONFIG.EMAIL_NOMBRE,
+        from: CONFIG.EMAIL_REMITENTE  // requiere alias configurado en Gmail
+      }
+    );
+
     log('✅ Email enviado exitosamente a: ' + email);
     return true;
-    
+
   } catch (error) {
     log('❌ Error al enviar email: ' + error.toString());
     return false;
