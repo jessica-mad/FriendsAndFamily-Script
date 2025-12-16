@@ -50,7 +50,9 @@ function personalizarPlantilla(htmlTemplate, datos) {
 }
 
 /**
- * Envía email usando Gmail desde hello@weavers.ai
+ * Envía email usando Gmail
+ * NOTA: Para enviar desde hello@weavers.ai necesitas configurar ese email como alias en Gmail
+ * Mientras tanto, se envía desde tu cuenta con el nombre "Weavers | Bienestar Financiero"
  */
 function enviarEmailInsight(email, insight, userData) {
   try {
@@ -67,19 +69,22 @@ function enviarEmailInsight(email, insight, userData) {
       insight: insight
     });
 
-    // Enviar email usando GmailApp para poder especificar el remitente
+    // Enviar email usando GmailApp
+    // Si hello@weavers.ai está configurado como alias en Gmail,
+    // descomenta la línea "from" en las opciones
     GmailApp.sendEmail(
       email,                          // destinatario
       CONFIG.EMAIL_ASUNTO,            // asunto
       '',                             // cuerpo en texto plano (vacío)
       {
         htmlBody: htmlPersonalizado,
-        name: CONFIG.EMAIL_NOMBRE,
-        from: CONFIG.EMAIL_REMITENTE  // requiere alias configurado en Gmail
+        name: CONFIG.EMAIL_NOMBRE
+        // from: CONFIG.EMAIL_REMITENTE  // Descomentar cuando configures el alias
       }
     );
 
     log('✅ Email enviado exitosamente a: ' + email);
+    log('ℹ️ Remitente: ' + CONFIG.EMAIL_NOMBRE);
     return true;
 
   } catch (error) {
