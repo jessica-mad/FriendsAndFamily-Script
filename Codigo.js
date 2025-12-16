@@ -491,26 +491,38 @@ function processRowInsight(sheet, rowNumber) {
       Logger.log(`Fila ${rowNumber}: Ya tiene insight`);
       return false;
     }
-    
+
     const rowData = sheet.getRange(rowNumber, 1, 1, CONFIG.COLUMNS.INSIGHT + 1).getValues()[0];
     const userData = extractUserData(rowData);
-    
+
     if (!userData.email || !userData.email.includes('@')) {
       Logger.log(`Fila ${rowNumber}: Email inválido`);
       return false;
     }
-    
+
     const ratios = calculateRatios(userData);
     const insight = generateInsight(userData, ratios);
-    
+
     if (insight && insight.length > 50) {
       insightCell.setValue(insight);
       Logger.log(`✅ Fila ${rowNumber}: Insight generado`);
+
+      // Enviar automáticamente a Mailchimp con tag "insight-pendiente"
+      Utilities.sleep(1000);
+      ensureMergeFieldExists();
+      const updated = updateMailchimpMergeField(userData.email, insight, userData);
+      if (updated) {
+        addMailchimpTag(userData.email, CONFIG.TAG_PENDIENTE);
+        Logger.log(`✅ Fila ${rowNumber}: Enviado a Mailchimp con tag ${CONFIG.TAG_PENDIENTE}`);
+      } else {
+        Logger.log(`⚠️ Fila ${rowNumber}: Error al enviar a Mailchimp`);
+      }
+
       return true;
     }
-    
+
     return false;
-    
+
   } catch (error) {
     Logger.log(`❌ Error fila ${rowNumber}: ${error}`);
     return false;
