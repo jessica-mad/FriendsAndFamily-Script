@@ -507,15 +507,14 @@ function processRowInsight(sheet, rowNumber) {
       insightCell.setValue(insight);
       Logger.log(`✅ Fila ${rowNumber}: Insight generado`);
 
-      // Enviar automáticamente a Mailchimp con tag "insight-pendiente"
+      // Crear/actualizar contacto en Mailchimp solo con tag
       Utilities.sleep(1000);
-      ensureMergeFieldExists();
-      const updated = updateMailchimpMergeField(userData.email, insight, userData);
-      if (updated) {
+      const created = createOrUpdateMailchimpContact(userData.email, userData);
+      if (created) {
         addMailchimpTag(userData.email, CONFIG.TAG_PENDIENTE);
-        Logger.log(`✅ Fila ${rowNumber}: Enviado a Mailchimp con tag ${CONFIG.TAG_PENDIENTE}`);
+        Logger.log(`✅ Fila ${rowNumber}: Contacto en Mailchimp con tag ${CONFIG.TAG_PENDIENTE}`);
       } else {
-        Logger.log(`⚠️ Fila ${rowNumber}: Error al enviar a Mailchimp`);
+        Logger.log(`⚠️ Fila ${rowNumber}: Error al crear contacto en Mailchimp`);
       }
 
       return true;
@@ -693,30 +692,29 @@ function onFormSubmit(e) {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME_DATA);
     const lastRow = sheet.getLastRow();
     const insightCell = sheet.getRange(lastRow, CONFIG.COLUMNS.INSIGHT + 1);
-    
+
     if (insightCell.getValue() !== '') {
       Logger.log('Esta fila ya tiene insight');
       return;
     }
-    
+
     const rowData = sheet.getRange(lastRow, 1, 1, CONFIG.COLUMNS.INSIGHT + 1).getValues()[0];
     const userData = extractUserData(rowData);
     const ratios = calculateRatios(userData);
     const insight = generateInsight(userData, ratios);
-    
+
     insightCell.setValue(insight);
-    
+
     const email = rowData[CONFIG.COLUMNS.EMAIL];
     if (email && email.includes('@')) {
       Utilities.sleep(2000);
-      ensureMergeFieldExists();
-      const updated = updateMailchimpMergeField(email, insight, userData);
-      if (updated) {
+      const created = createOrUpdateMailchimpContact(email, userData);
+      if (created) {
         addMailchimpTag(email, CONFIG.TAG_PENDIENTE);
-        Logger.log('✅ Mailchimp actualizado con tag ' + CONFIG.TAG_PENDIENTE + ': ' + email);
+        Logger.log('✅ Contacto en Mailchimp con tag ' + CONFIG.TAG_PENDIENTE + ': ' + email);
       }
     }
-    
+
   } catch (error) {
     Logger.log('ERROR: ' + error.toString());
   }
@@ -934,6 +932,68 @@ function buildUserPromptFromTemplate(template, userData, ratios) {
     .replace(/\{\{ingresos_netos_mensuales\}\}/g, ratios.ingresos_netos_mensuales || 0)
     .replace(/\$\{ratios\.es_cuenta_ajena \? [^}]*\}/g, umbralColchon)
     .replace(/\{\{umbral_colchon\}\}/g, umbralColchon);
+}
+
+// ============================================================================
+// INTEGRACIÓN MAILCHIMP SIMPLIFICADA - SOLO CONTACTOS Y TAGS
+// ============================================================================
+
+/**
+ * Crea o actualiza un contacto en Mailchimp (sin enviar insights)
+ * Solo crea el contacto básico con nombre
+ */
+function createOrUpdateMailchimpContact(email, userData) {
+  try {
+    const emailNormalizado = email.toLowerCase().trim();
+    const subscriberHash = generateMD5Hash(emailNormalizado);
+
+    logDetailed('📧 Email: ' + emailNormalizado);
+    logDetailed('🔐 Hash: ' + subscriberHash);
+
+    const url = `https://${CONFIG.MAILCHIMP_SERVER}.api.mailchimp.com/3.0/lists/${CONFIG.MAILCHIMP_LIST_ID}/members/${subscriberHash}`;
+
+    const emailName = emailNormalizado.split('@')[0];
+    const firstName = emailName.charAt(0).toUpperCase() + emailName.slice(1);
+
+    const payload = {
+      email_address: emailNormalizado,
+      status_if_new: 'subscribed',
+      status: 'subscribed',
+      merge_fields: {
+        FNAME: firstName
+      }
+    };
+
+    logDetailed('📦 Creando/actualizando contacto básico en Mailchimp');
+
+    const options = {
+      method: 'put',
+      headers: {
+        'Authorization': 'Bearer ' + CONFIG.MAILCHIMP_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    const response = UrlFetchApp.fetch(url, options);
+    const responseCode = response.getResponseCode();
+
+    logDetailed('📊 Response Code: ' + responseCode);
+
+    if (responseCode === 200) {
+      const result = JSON.parse(response.getContentText());
+      logDetailed('✅ Contacto creado/actualizado - Status: ' + result.status);
+      return true;
+    } else {
+      logDetailed('❌ Error Mailchimp: ' + response.getContentText());
+      return false;
+    }
+
+  } catch (error) {
+    logDetailed('❌ Excepción Mailchimp: ' + error.toString());
+    return false;
+  }
 }
 
 // ============================================================================
