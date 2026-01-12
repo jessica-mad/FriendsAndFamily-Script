@@ -749,92 +749,24 @@ function extractUserData(rowData) {
 }
 
 function calculateRatios(userData) {
+  // Ya no calculamos ratios numéricos, solo pasamos los datos originales
+  // para que el modelo de IA haga la estimación del estado financiero
   const ratios = {
-    ratio_ahorro: null,
-    meses_colchon: null,
-    ratio_vivienda: null,
-    ratio_deuda: null,
-    capacidad_reaccion: null,
+    porcentaje_ahorro: userData.porcentaje_ahorro || 'No especificado',
+    colchon_liquido: userData.colchon_liquido || 'No especificado',
+    gasto_vivienda: userData.gasto_vivienda || 'No especificado',
+    porcentaje_deuda: userData.porcentaje_deuda || 'No especificado',
+    capacidad_recorte: userData.capacidad_recorte || 'No especificado',
+    ingresos_brutos: userData.ingresos_brutos || 'No especificado',
     es_cuenta_ajena: userData.situacion_laboral === 'Trabajo por cuenta ajena'
   };
-  
-  const ingresosNetos = estimarIngresosNetosMensuales(userData.ingresos_brutos);
-  
-  ratios.ratio_ahorro = parseRangoAhorro(userData.porcentaje_ahorro);
-  ratios.meses_colchon = parseMesesColchon(userData.colchon_liquido, ingresosNetos);
-  ratios.ratio_vivienda = parseRatioVivienda(userData.gasto_vivienda);
-  ratios.ratio_deuda = parseRatioDeuda(userData.porcentaje_deuda);
-  ratios.capacidad_reaccion = parseCapacidadRecorte(userData.capacidad_recorte);
-  ratios.ingresos_netos_mensuales = ingresosNetos;
-  
+
   return ratios;
 }
 
-function estimarIngresosNetosMensuales(ingresosBrutos) {
-  const rangos = {
-    'Menos de 12.000 €': 10000,
-    'Entre 12.000 y 21.000 €': 16500,
-    'Entre 21.000 y 30.000 €': 25500,
-    'Entre 30.000 y 60.000 €': 45000,
-    'Entre 60.000 y 90.000 €': 75000,
-    'Entre 90.000 y 120.000 €': 105000,
-    'Más de 120.000 €': 150000
-  };
-  
-  const brutoAnual = rangos[ingresosBrutos] || 30000;
-  let retencion = 0.15;
-  if (brutoAnual > 60000) retencion = 0.25;
-  if (brutoAnual > 100000) retencion = 0.30;
-  
-  return Math.round((brutoAnual * (1 - retencion)) / 12);
-}
-
-function parseRangoAhorro(texto) {
-  if (!texto) return 10;
-  if (texto.includes('No ahorro')) return 0;
-  if (texto.includes('Menos del 10%')) return 5;
-  if (texto.includes('10%') && texto.includes('30%')) return 20;
-  if (texto.includes('30%') && texto.includes('40%')) return 35;
-  if (texto.includes('Más del 40%')) return 45;
-  return 10;
-}
-
-function parseMesesColchon(texto, ingresosNetos) {
-  if (!texto) return 0;
-  if (texto.includes('Mejor ni preguntes')) return 0;
-  if (texto.includes('Menos de 3 meses')) return 1.5;
-  if (texto.includes('Entre 3 y 6 meses')) return 4.5;
-  if (texto.includes('Más de 6 meses')) return 9;
-  return 0;
-}
-
-function parseRatioVivienda(texto) {
-  if (!texto) return 35;
-  if (texto.includes('Menos de un tercio') || texto.includes('33%')) return 28;
-  if (texto.includes('33%') && texto.includes('40%')) return 36.5;
-  if (texto.includes('40%') && texto.includes('50%')) return 45;
-  if (texto.includes('Más del 50%')) return 55;
-  return 35;
-}
-
-function parseRatioDeuda(texto) {
-  if (!texto) return 0;
-  if (texto.includes('No tengo deuda')) return 0;
-  if (texto.includes('Menos del 10%')) return 5;
-  if (texto.includes('10%') && texto.includes('20%')) return 15;
-  if (texto.includes('Más del 20%')) return 25;
-  return 0;
-}
-
-function parseCapacidadRecorte(texto) {
-  if (!texto) return 15;
-  if (texto.includes('No lo sé')) return 10;
-  if (texto.includes('Menos del 15%')) return 10;
-  if (texto.includes('15%') && texto.includes('25%')) return 20;
-  if (texto.includes('24%') && texto.includes('40%')) return 32;
-  if (texto.includes('Más del 40%')) return 45;
-  return 15;
-}
+// Las funciones de parsing y cálculo han sido eliminadas
+// ya que ahora se pasan los datos originales directamente al prompt
+// para que el modelo de IA haga la estimación del estado financiero
 
 // ============================================================================
 // GENERACIÓN DE INSIGHT CON OPENAI
@@ -910,25 +842,55 @@ function buildUserPromptFromTemplate(template, userData, ratios) {
     .replace(/\{\{userData\.presupuesto\}\}/g, userData.presupuesto || 'No especificado')
     .replace(/\$\{userData\.vivienda_principal\}/g, userData.vivienda_principal || 'No especificado')
     .replace(/\{\{userData\.vivienda_principal\}\}/g, userData.vivienda_principal || 'No especificado')
-    // Variables de ratios
-    .replace(/\$\{ratios\.ratio_ahorro\}/g, ratios.ratio_ahorro || 0)
-    .replace(/\{\{ratios\.ratio_ahorro\}\}/g, ratios.ratio_ahorro || 0)
-    .replace(/\{\{ratio_ahorro\}\}/g, ratios.ratio_ahorro || 0)
-    .replace(/\$\{ratios\.meses_colchon\}/g, ratios.meses_colchon || 0)
-    .replace(/\{\{ratios\.meses_colchon\}\}/g, ratios.meses_colchon || 0)
-    .replace(/\{\{meses_colchon\}\}/g, ratios.meses_colchon || 0)
-    .replace(/\$\{ratios\.ratio_vivienda\}/g, ratios.ratio_vivienda || 0)
-    .replace(/\{\{ratios\.ratio_vivienda\}\}/g, ratios.ratio_vivienda || 0)
-    .replace(/\{\{ratio_vivienda\}\}/g, ratios.ratio_vivienda || 0)
-    .replace(/\$\{ratios\.ratio_deuda\}/g, ratios.ratio_deuda || 0)
-    .replace(/\{\{ratios\.ratio_deuda\}\}/g, ratios.ratio_deuda || 0)
-    .replace(/\{\{ratio_deuda\}\}/g, ratios.ratio_deuda || 0)
-    .replace(/\$\{ratios\.capacidad_reaccion\}/g, ratios.capacidad_reaccion || 0)
-    .replace(/\{\{ratios\.capacidad_reaccion\}\}/g, ratios.capacidad_reaccion || 0)
-    .replace(/\{\{capacidad_reaccion\}\}/g, ratios.capacidad_reaccion || 0)
-    .replace(/\$\{ratios\.ingresos_netos_mensuales\}/g, ratios.ingresos_netos_mensuales || 0)
-    .replace(/\{\{ratios\.ingresos_netos_mensuales\}\}/g, ratios.ingresos_netos_mensuales || 0)
-    .replace(/\{\{ingresos_netos_mensuales\}\}/g, ratios.ingresos_netos_mensuales || 0)
+    .replace(/\$\{userData\.ingresos_brutos\}/g, userData.ingresos_brutos || 'No especificado')
+    .replace(/\{\{userData\.ingresos_brutos\}\}/g, userData.ingresos_brutos || 'No especificado')
+    .replace(/\$\{userData\.porcentaje_ahorro\}/g, userData.porcentaje_ahorro || 'No especificado')
+    .replace(/\{\{userData\.porcentaje_ahorro\}\}/g, userData.porcentaje_ahorro || 'No especificado')
+    .replace(/\$\{userData\.colchon_liquido\}/g, userData.colchon_liquido || 'No especificado')
+    .replace(/\{\{userData\.colchon_liquido\}\}/g, userData.colchon_liquido || 'No especificado')
+    .replace(/\$\{userData\.gasto_vivienda\}/g, userData.gasto_vivienda || 'No especificado')
+    .replace(/\{\{userData\.gasto_vivienda\}\}/g, userData.gasto_vivienda || 'No especificado')
+    .replace(/\$\{userData\.porcentaje_deuda\}/g, userData.porcentaje_deuda || 'No especificado')
+    .replace(/\{\{userData\.porcentaje_deuda\}\}/g, userData.porcentaje_deuda || 'No especificado')
+    .replace(/\$\{userData\.capacidad_recorte\}/g, userData.capacidad_recorte || 'No especificado')
+    .replace(/\{\{userData\.capacidad_recorte\}\}/g, userData.capacidad_recorte || 'No especificado')
+    // Variables de ratios (ahora con datos de texto originales)
+    .replace(/\$\{ratios\.porcentaje_ahorro\}/g, ratios.porcentaje_ahorro)
+    .replace(/\{\{ratios\.porcentaje_ahorro\}\}/g, ratios.porcentaje_ahorro)
+    .replace(/\{\{porcentaje_ahorro\}\}/g, ratios.porcentaje_ahorro)
+    .replace(/\$\{ratios\.ratio_ahorro\}/g, ratios.porcentaje_ahorro)
+    .replace(/\{\{ratios\.ratio_ahorro\}\}/g, ratios.porcentaje_ahorro)
+    .replace(/\{\{ratio_ahorro\}\}/g, ratios.porcentaje_ahorro)
+    .replace(/\$\{ratios\.colchon_liquido\}/g, ratios.colchon_liquido)
+    .replace(/\{\{ratios\.colchon_liquido\}\}/g, ratios.colchon_liquido)
+    .replace(/\{\{colchon_liquido\}\}/g, ratios.colchon_liquido)
+    .replace(/\$\{ratios\.meses_colchon\}/g, ratios.colchon_liquido)
+    .replace(/\{\{ratios\.meses_colchon\}\}/g, ratios.colchon_liquido)
+    .replace(/\{\{meses_colchon\}\}/g, ratios.colchon_liquido)
+    .replace(/\$\{ratios\.gasto_vivienda\}/g, ratios.gasto_vivienda)
+    .replace(/\{\{ratios\.gasto_vivienda\}\}/g, ratios.gasto_vivienda)
+    .replace(/\{\{gasto_vivienda\}\}/g, ratios.gasto_vivienda)
+    .replace(/\$\{ratios\.ratio_vivienda\}/g, ratios.gasto_vivienda)
+    .replace(/\{\{ratios\.ratio_vivienda\}\}/g, ratios.gasto_vivienda)
+    .replace(/\{\{ratio_vivienda\}\}/g, ratios.gasto_vivienda)
+    .replace(/\$\{ratios\.porcentaje_deuda\}/g, ratios.porcentaje_deuda)
+    .replace(/\{\{ratios\.porcentaje_deuda\}\}/g, ratios.porcentaje_deuda)
+    .replace(/\{\{porcentaje_deuda\}\}/g, ratios.porcentaje_deuda)
+    .replace(/\$\{ratios\.ratio_deuda\}/g, ratios.porcentaje_deuda)
+    .replace(/\{\{ratios\.ratio_deuda\}\}/g, ratios.porcentaje_deuda)
+    .replace(/\{\{ratio_deuda\}\}/g, ratios.porcentaje_deuda)
+    .replace(/\$\{ratios\.capacidad_recorte\}/g, ratios.capacidad_recorte)
+    .replace(/\{\{ratios\.capacidad_recorte\}\}/g, ratios.capacidad_recorte)
+    .replace(/\{\{capacidad_recorte\}\}/g, ratios.capacidad_recorte)
+    .replace(/\$\{ratios\.capacidad_reaccion\}/g, ratios.capacidad_recorte)
+    .replace(/\{\{ratios\.capacidad_reaccion\}\}/g, ratios.capacidad_recorte)
+    .replace(/\{\{capacidad_reaccion\}\}/g, ratios.capacidad_recorte)
+    .replace(/\$\{ratios\.ingresos_brutos\}/g, ratios.ingresos_brutos)
+    .replace(/\{\{ratios\.ingresos_brutos\}\}/g, ratios.ingresos_brutos)
+    .replace(/\{\{ingresos_brutos\}\}/g, ratios.ingresos_brutos)
+    .replace(/\$\{ratios\.ingresos_netos_mensuales\}/g, ratios.ingresos_brutos)
+    .replace(/\{\{ratios\.ingresos_netos_mensuales\}\}/g, ratios.ingresos_brutos)
+    .replace(/\{\{ingresos_netos_mensuales\}\}/g, ratios.ingresos_brutos)
     .replace(/\$\{ratios\.es_cuenta_ajena \? [^}]*\}/g, umbralColchon)
     .replace(/\{\{umbral_colchon\}\}/g, umbralColchon);
 }
