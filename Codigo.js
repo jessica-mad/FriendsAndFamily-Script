@@ -735,6 +735,8 @@ function extractUserData(rowData) {
     llegar_fin_mes: rowData[CONFIG.COLUMNS.LLEGAR_FIN_MES],
     estabilidad: rowData[CONFIG.COLUMNS.ESTABILIDAD],
     control_dinero: rowData[CONFIG.COLUMNS.CONTROL_DINERO],
+    temas_preocupan: rowData[CONFIG.COLUMNS.TEMAS_PREOCUPAN],
+    lo_que_necesitas: rowData[CONFIG.COLUMNS.LO_QUE_NECESITAS],
     ingresos_brutos: rowData[CONFIG.COLUMNS.INGRESOS_BRUTOS],
     porcentaje_ahorro: rowData[CONFIG.COLUMNS.PORCENTAJE_AHORRO],
     colchon_liquido: rowData[CONFIG.COLUMNS.COLCHON_LIQUIDO],
@@ -742,6 +744,8 @@ function extractUserData(rowData) {
     gasto_vivienda: rowData[CONFIG.COLUMNS.GASTO_VIVIENDA],
     porcentaje_deuda: rowData[CONFIG.COLUMNS.PORCENTAJE_DEUDA],
     capacidad_recorte: rowData[CONFIG.COLUMNS.CAPACIDAD_RECORTE],
+    ocupacion_finanzas: rowData[CONFIG.COLUMNS.OCUPACION_FINANZAS],
+    como_ahorras: rowData[CONFIG.COLUMNS.COMO_AHORRAS],
     control_gastos: rowData[CONFIG.COLUMNS.CONTROL_GASTOS],
     presupuesto: rowData[CONFIG.COLUMNS.PRESUPUESTO],
     manejo_imprevistos: rowData[CONFIG.COLUMNS.MANEJO_IMPREVISTOS]
@@ -836,10 +840,18 @@ function buildUserPromptFromTemplate(template, userData, ratios) {
     .replace(/\{\{userData\.preocupacion_dinero\}\}/g, userData.preocupacion_dinero || 'No especificado')
     .replace(/\$\{userData\.llegar_fin_mes\}/g, userData.llegar_fin_mes || 'No especificado')
     .replace(/\{\{userData\.llegar_fin_mes\}\}/g, userData.llegar_fin_mes || 'No especificado')
+    .replace(/\$\{userData\.temas_preocupan\}/g, userData.temas_preocupan || 'No especificado')
+    .replace(/\{\{userData\.temas_preocupan\}\}/g, userData.temas_preocupan || 'No especificado')
+    .replace(/\$\{userData\.lo_que_necesitas\}/g, userData.lo_que_necesitas || 'No especificado')
+    .replace(/\{\{userData\.lo_que_necesitas\}\}/g, userData.lo_que_necesitas || 'No especificado')
     .replace(/\$\{userData\.control_gastos\}/g, userData.control_gastos || 'No especificado')
     .replace(/\{\{userData\.control_gastos\}\}/g, userData.control_gastos || 'No especificado')
     .replace(/\$\{userData\.presupuesto\}/g, userData.presupuesto || 'No especificado')
     .replace(/\{\{userData\.presupuesto\}\}/g, userData.presupuesto || 'No especificado')
+    .replace(/\$\{userData\.ocupacion_finanzas\}/g, userData.ocupacion_finanzas || 'No especificado')
+    .replace(/\{\{userData\.ocupacion_finanzas\}\}/g, userData.ocupacion_finanzas || 'No especificado')
+    .replace(/\$\{userData\.como_ahorras\}/g, userData.como_ahorras || 'No especificado')
+    .replace(/\{\{userData\.como_ahorras\}\}/g, userData.como_ahorras || 'No especificado')
     .replace(/\$\{userData\.vivienda_principal\}/g, userData.vivienda_principal || 'No especificado')
     .replace(/\{\{userData\.vivienda_principal\}\}/g, userData.vivienda_principal || 'No especificado')
     .replace(/\$\{userData\.ingresos_brutos\}/g, userData.ingresos_brutos || 'No especificado')
