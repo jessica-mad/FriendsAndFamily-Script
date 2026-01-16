@@ -19,6 +19,9 @@ function instalarMenu() {
   ui.createMenu('🤖 Weavers Automation')
     .addItem('⚙️ Configurar Trigger Automático', 'setupTrigger')
     .addSeparator()
+    .addItem('🎯 Generar Perfilado (Filas Seleccionadas)', 'generatePerfiladoForSelection')
+    .addItem('🎯 Generar Perfilado (Todas las Filas Vacías)', 'generatePerfiladoForEmptyRows')
+    .addSeparator()
     .addItem('✨ Generar Insights (Filas Seleccionadas)', 'generateInsightsForSelection')
     .addItem('✨ Generar Insights (Todas las Filas Vacías)', 'generateInsightsForEmptyRows')
     .addSeparator()
@@ -395,6 +398,127 @@ function getPromptsFromSheet() {
 }
 
 // ============================================================================
+// FUNCIONES CON BOTONES - GENERAR PERFILADO
+// ============================================================================
+
+function generatePerfiladoForSelection() {
+  const ui = SpreadsheetApp.getUi();
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME_DATA);
+  const selection = sheet.getActiveRange();
+
+  if (!selection) {
+    ui.alert('❌ Selecciona las filas que deseas perfilar.');
+    return;
+  }
+
+  const firstRow = selection.getRow();
+  const numRows = selection.getNumRows();
+
+  const response = ui.alert(
+    'Generar Perfilado',
+    `¿Generar perfilado para ${numRows} fila(s)?\nFilas: ${firstRow} a ${firstRow + numRows - 1}`,
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) return;
+
+  let processed = 0;
+  let errors = 0;
+
+  for (let i = 0; i < numRows; i++) {
+    try {
+      if (processRowPerfilado(sheet, firstRow + i)) {
+        processed++;
+      } else {
+        errors++;
+      }
+    } catch (error) {
+      Logger.log(`Error fila ${firstRow + i}: ${error}`);
+      errors++;
+    }
+    Utilities.sleep(100);
+  }
+
+  ui.alert('✅ Completado', `Perfilados: ${processed}\nErrores: ${errors}`, ui.ButtonSet.OK);
+}
+
+function generatePerfiladoForEmptyRows() {
+  const ui = SpreadsheetApp.getUi();
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME_DATA);
+  const lastRow = sheet.getLastRow();
+
+  const emptyRows = [];
+  for (let i = 2; i <= lastRow; i++) {
+    if (!sheet.getRange(i, CONFIG.COLUMNS.PERFILADO + 1).getValue()) {
+      emptyRows.push(i);
+    }
+  }
+
+  if (emptyRows.length === 0) {
+    ui.alert('ℹ️ No hay filas sin perfilado');
+    return;
+  }
+
+  const response = ui.alert(
+    'Generar Perfilado Masivo',
+    `${emptyRows.length} filas sin perfilado.\n¿Procesar todas?`,
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) return;
+
+  let processed = 0;
+  let errors = 0;
+
+  for (let i = 0; i < emptyRows.length; i++) {
+    try {
+      if (processRowPerfilado(sheet, emptyRows[i])) {
+        processed++;
+      } else {
+        errors++;
+      }
+    } catch (error) {
+      Logger.log(`Error fila ${emptyRows[i]}: ${error}`);
+      errors++;
+    }
+    Utilities.sleep(100);
+  }
+
+  ui.alert('✅ Completado', `Perfilados: ${processed}\nErrores: ${errors}`, ui.ButtonSet.OK);
+}
+
+function processRowPerfilado(sheet, rowNumber) {
+  try {
+    const perfiladoCell = sheet.getRange(rowNumber, CONFIG.COLUMNS.PERFILADO + 1);
+
+    // Si ya tiene perfilado, preguntar si sobrescribir
+    const existingPerfilado = perfiladoCell.getValue();
+    if (existingPerfilado !== '') {
+      Logger.log(`Fila ${rowNumber}: Ya tiene perfilado, sobrescribiendo...`);
+    }
+
+    const rowData = sheet.getRange(rowNumber, 1, 1, CONFIG.COLUMNS.PERFILADO + 1).getValues()[0];
+    const userData = extractUserData(rowData);
+
+    if (!userData.email || !userData.email.includes('@')) {
+      Logger.log(`Fila ${rowNumber}: Email inválido`);
+      return false;
+    }
+
+    // Generar perfilado
+    const perfilado = generarPerfilado(userData);
+    perfiladoCell.setValue(perfilado);
+    Logger.log(`✅ Fila ${rowNumber}: Perfilado generado`);
+
+    return true;
+
+  } catch (error) {
+    Logger.log(`❌ Error fila ${rowNumber}: ${error}`);
+    return false;
+  }
+}
+
+// ============================================================================
 // FUNCIONES CON BOTONES - GENERAR INSIGHTS
 // ============================================================================
 
@@ -500,11 +624,17 @@ function processRowInsight(sheet, rowNumber) {
       return false;
     }
 
-    // ========== GENERAR PERFILADO PRIMERO ==========
-    const perfilado = generarPerfilado(userData);
+    // ========== GENERAR PERFILADO SI NO EXISTE ==========
     const perfiladoCell = sheet.getRange(rowNumber, CONFIG.COLUMNS.PERFILADO + 1);
-    perfiladoCell.setValue(perfilado);
-    Logger.log(`✅ Fila ${rowNumber}: Perfilado generado - ${perfilado}`);
+    let perfilado = perfiladoCell.getValue();
+
+    if (!perfilado || perfilado === '') {
+      perfilado = generarPerfilado(userData);
+      perfiladoCell.setValue(perfilado);
+      Logger.log(`✅ Fila ${rowNumber}: Perfilado generado`);
+    } else {
+      Logger.log(`ℹ️ Fila ${rowNumber}: Usando perfilado existente`);
+    }
 
     // ========== GENERAR INSIGHT DESPUÉS ==========
     const ratios = calculateRatios(userData);
@@ -707,11 +837,17 @@ function onFormSubmit(e) {
     const rowData = sheet.getRange(lastRow, 1, 1, CONFIG.COLUMNS.PERFILADO + 1).getValues()[0];
     const userData = extractUserData(rowData);
 
-    // ========== GENERAR PERFILADO PRIMERO ==========
-    const perfilado = generarPerfilado(userData);
+    // ========== GENERAR PERFILADO SI NO EXISTE ==========
     const perfiladoCell = sheet.getRange(lastRow, CONFIG.COLUMNS.PERFILADO + 1);
-    perfiladoCell.setValue(perfilado);
-    Logger.log('✅ Perfilado generado: ' + perfilado);
+    let perfilado = perfiladoCell.getValue();
+
+    if (!perfilado || perfilado === '') {
+      perfilado = generarPerfilado(userData);
+      perfiladoCell.setValue(perfilado);
+      Logger.log('✅ Perfilado generado');
+    } else {
+      Logger.log('ℹ️ Usando perfilado existente');
+    }
 
     // ========== GENERAR INSIGHT DESPUÉS ==========
     const ratios = calculateRatios(userData);
