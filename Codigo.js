@@ -491,18 +491,25 @@ function processRowInsight(sheet, rowNumber) {
       Logger.log(`Fila ${rowNumber}: Ya tiene insight`);
       return false;
     }
-    
-    const rowData = sheet.getRange(rowNumber, 1, 1, CONFIG.COLUMNS.INSIGHT + 1).getValues()[0];
+
+    const rowData = sheet.getRange(rowNumber, 1, 1, CONFIG.COLUMNS.PERFILADO + 1).getValues()[0];
     const userData = extractUserData(rowData);
-    
+
     if (!userData.email || !userData.email.includes('@')) {
       Logger.log(`Fila ${rowNumber}: Email inválido`);
       return false;
     }
-    
+
+    // ========== GENERAR PERFILADO PRIMERO ==========
+    const perfilado = generarPerfilado(userData);
+    const perfiladoCell = sheet.getRange(rowNumber, CONFIG.COLUMNS.PERFILADO + 1);
+    perfiladoCell.setValue(perfilado);
+    Logger.log(`✅ Fila ${rowNumber}: Perfilado generado - ${perfilado}`);
+
+    // ========== GENERAR INSIGHT DESPUÉS ==========
     const ratios = calculateRatios(userData);
     const insight = generateInsight(userData, ratios);
-    
+
     if (insight && insight.length > 50) {
       insightCell.setValue(insight);
       Logger.log(`✅ Fila ${rowNumber}: Insight generado`);
@@ -518,9 +525,9 @@ function processRowInsight(sheet, rowNumber) {
       }
       return true;
     }
-    
+
     return false;
-    
+
   } catch (error) {
     Logger.log(`❌ Error fila ${rowNumber}: ${error}`);
     return false;
@@ -691,19 +698,27 @@ function onFormSubmit(e) {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME_DATA);
     const lastRow = sheet.getLastRow();
     const insightCell = sheet.getRange(lastRow, CONFIG.COLUMNS.INSIGHT + 1);
-    
+
     if (insightCell.getValue() !== '') {
       Logger.log('Esta fila ya tiene insight');
       return;
     }
-    
-    const rowData = sheet.getRange(lastRow, 1, 1, CONFIG.COLUMNS.INSIGHT + 1).getValues()[0];
+
+    const rowData = sheet.getRange(lastRow, 1, 1, CONFIG.COLUMNS.PERFILADO + 1).getValues()[0];
     const userData = extractUserData(rowData);
+
+    // ========== GENERAR PERFILADO PRIMERO ==========
+    const perfilado = generarPerfilado(userData);
+    const perfiladoCell = sheet.getRange(lastRow, CONFIG.COLUMNS.PERFILADO + 1);
+    perfiladoCell.setValue(perfilado);
+    Logger.log('✅ Perfilado generado: ' + perfilado);
+
+    // ========== GENERAR INSIGHT DESPUÉS ==========
     const ratios = calculateRatios(userData);
     const insight = generateInsight(userData, ratios);
-    
+
     insightCell.setValue(insight);
-    
+
     const email = rowData[CONFIG.COLUMNS.EMAIL];
     if (email && email.includes('@')) {
       Utilities.sleep(2000);
@@ -713,7 +728,7 @@ function onFormSubmit(e) {
        Logger.log('✅ Contacto en Mailchimp con tag ' + CONFIG.TAG_PENDIENTE + ': ' + email);
       }
     }
-    
+
   } catch (error) {
     Logger.log('ERROR: ' + error.toString());
   }
@@ -729,6 +744,7 @@ function extractUserData(rowData) {
     edad: rowData[CONFIG.COLUMNS.EDAD],
     genero: rowData[CONFIG.COLUMNS.GENERO],
     situacion_laboral: rowData[CONFIG.COLUMNS.SITUACION_LABORAL],
+    gastos_para: rowData[CONFIG.COLUMNS.GASTOS_PARA],
     unidad_familiar: rowData[CONFIG.COLUMNS.UNIDAD_FAMILIAR],
     satisfaccion_financiera: rowData[CONFIG.COLUMNS.SATISFACCION],
     preocupacion_dinero: rowData[CONFIG.COLUMNS.PREOCUPACION_DINERO],
@@ -750,6 +766,212 @@ function extractUserData(rowData) {
     presupuesto: rowData[CONFIG.COLUMNS.PRESUPUESTO],
     manejo_imprevistos: rowData[CONFIG.COLUMNS.MANEJO_IMPREVISTOS]
   };
+}
+
+// ============================================================================
+// FUNCIÓN DE PERFILADO
+// ============================================================================
+
+/**
+ * Genera el perfil financiero del usuario antes de crear insights
+ * Evalúa múltiples variables: colchón, ahorro, vivienda, deuda, inversión
+ */
+function generarPerfilado(userData) {
+  const perfil = {
+    colchon: '',
+    ahorro: '',
+    vivienda: '',
+    deuda: '',
+    ahorro_inversion: ''
+  };
+
+  // ========== EVALUACIÓN DEL COLCHÓN (PREGUNTA 3 + 5) ==========
+  const situacionLaboral = userData.situacion_laboral || '';
+  const colchonLiquido = userData.colchon_liquido || '';
+  const gastosPara = userData.gastos_para || '';
+
+  // Normalizar texto para comparación
+  const situacionNorm = situacionLaboral.toLowerCase();
+
+  // Determinar si es ESTÁNDAR o requiere más colchón
+  const esCuentaAjena = situacionNorm.includes('cuenta ajena');
+  const esJubilado = situacionNorm.includes('jubilado');
+  const esFuncionario = situacionNorm.includes('funcionario');
+  const esCuentaPropia = situacionNorm.includes('cuenta propia');
+  const noEstaTrabajando = situacionNorm.includes('no estoy trabajando');
+
+  if (esCuentaAjena || esJubilado || esFuncionario) {
+    // COLCHÓN ESTÁNDAR
+    if (colchonLiquido === 'Mejor ni preguntes' || colchonLiquido === 'Menos de 3 meses de ingresos netos') {
+      perfil.colchon = 'Mal';
+    } else if (colchonLiquido === 'Entre 3 y 6 meses de ingresos netos') {
+      perfil.colchon = 'Bien';
+    } else if (colchonLiquido === 'Más de 6 meses de ingresos netos') {
+      perfil.colchon = 'Super bien';
+    }
+  } else if (esCuentaPropia) {
+    // COLCHÓN PARA AUTÓNOMOS (más exigente)
+    if (colchonLiquido === 'Mejor ni preguntes' ||
+        colchonLiquido === 'Menos de 3 meses de ingresos netos' ||
+        colchonLiquido === 'Entre 3 y 6 meses de ingresos netos') {
+      perfil.colchon = 'Mal';
+    } else if (colchonLiquido === 'Más de 6 meses de ingresos netos') {
+      perfil.colchon = 'Bien';
+    }
+  } else if (noEstaTrabajando) {
+    // Depende de si es para unidad familiar o solo para él
+    const gastosFamiliar = gastosPara && gastosPara.toLowerCase().includes('unidad familiar');
+
+    if (gastosFamiliar) {
+      // Aplicar clasificación estándar
+      if (colchonLiquido === 'Mejor ni preguntes' || colchonLiquido === 'Menos de 3 meses de ingresos netos') {
+        perfil.colchon = 'Mal';
+      } else if (colchonLiquido === 'Entre 3 y 6 meses de ingresos netos') {
+        perfil.colchon = 'Bien';
+      } else if (colchonLiquido === 'Más de 6 meses de ingresos netos') {
+        perfil.colchon = 'Super bien';
+      }
+    } else {
+      // Solo para mí - impacta en capacidad de reacción (criterio más estricto, similar a autónomos)
+      if (colchonLiquido === 'Mejor ni preguntes' ||
+          colchonLiquido === 'Menos de 3 meses de ingresos netos' ||
+          colchonLiquido === 'Entre 3 y 6 meses de ingresos netos') {
+        perfil.colchon = 'Mal - Capacidad de reacción limitada';
+      } else if (colchonLiquido === 'Más de 6 meses de ingresos netos') {
+        perfil.colchon = 'Bien';
+      }
+    }
+  }
+
+  // ========== EVALUACIÓN SEGÚN TIPO DE VIVIENDA (PREGUNTA 23) ==========
+  const viviendaPrincipal = userData.vivienda_principal || '';
+  const porcentajeAhorro = userData.porcentaje_ahorro || '';
+  const gastoVivienda = userData.gasto_vivienda || '';
+
+  if (viviendaPrincipal.includes('hipoteca')) {
+    // ===== HIPOTECA =====
+    // Evaluar ahorro
+    if (porcentajeAhorro === 'No ahorro nada' || porcentajeAhorro === 'Menos del 10%') {
+      perfil.ahorro = 'Mal';
+    } else if (porcentajeAhorro === 'Entre el 10% y el 30%') {
+      perfil.ahorro = 'Bien';
+    } else if (porcentajeAhorro === 'Entre el 30% y el 40%' || porcentajeAhorro === 'Más del 40%') {
+      perfil.ahorro = 'Super bien';
+    }
+
+    // Evaluar gasto de vivienda
+    if (gastoVivienda === 'Más del 50% de mis ingresos netos' ||
+        gastoVivienda === 'Entre el 40% y el 50% de mis ingresos netos') {
+      perfil.vivienda = 'Mal';
+    } else if (gastoVivienda === 'Entre el 33% y el 40% de mis ingresos netos') {
+      perfil.vivienda = 'Bien';
+    } else if (gastoVivienda === 'Menos de un tercio (33%) de mis ingresos netos') {
+      perfil.vivienda = 'Super bien';
+    }
+
+  } else if (viviendaPrincipal.includes('alquiler')) {
+    // ===== ALQUILER =====
+    // Evaluar ahorro (criterios más estrictos)
+    if (porcentajeAhorro === 'No ahorro nada' ||
+        porcentajeAhorro === 'Menos del 10%' ||
+        porcentajeAhorro === 'Entre el 10% y el 30%') {
+      perfil.ahorro = 'Mal';
+    } else if (porcentajeAhorro === 'Entre el 30% y el 40%') {
+      perfil.ahorro = 'Bien';
+    } else if (porcentajeAhorro === 'Más del 40%') {
+      perfil.ahorro = 'Super bien';
+    }
+
+    // Evaluar gasto de vivienda (criterios más estrictos)
+    if (gastoVivienda === 'Más del 50% de mis ingresos netos' ||
+        gastoVivienda === 'Entre el 40% y el 50% de mis ingresos netos' ||
+        gastoVivienda === 'Entre el 33% y el 40% de mis ingresos netos') {
+      perfil.vivienda = 'Mal';
+    } else if (gastoVivienda === 'Menos de un tercio (33%) de mis ingresos netos') {
+      perfil.vivienda = 'Bien';
+    }
+
+  } else if (viviendaPrincipal.includes('pagado') || viviendaPrincipal.includes('pagada')) {
+    // ===== VIVIENDA PAGADA =====
+    // Evaluar ahorro (muy estricto)
+    if (porcentajeAhorro === 'No ahorro nada' ||
+        porcentajeAhorro === 'Menos del 10%' ||
+        porcentajeAhorro === 'Entre el 10% y el 30%' ||
+        porcentajeAhorro === 'Entre el 30% y el 40%') {
+      perfil.ahorro = 'Mal';
+    } else if (porcentajeAhorro === 'Más del 40%') {
+      perfil.ahorro = 'Bien';
+    }
+
+    // Evaluar gasto de vivienda
+    if (gastoVivienda === 'Más del 50% de mis ingresos netos' ||
+        gastoVivienda === 'Entre el 40% y el 50% de mis ingresos netos' ||
+        gastoVivienda === 'Entre el 33% y el 40% de mis ingresos netos') {
+      perfil.vivienda = 'Mal';
+    } else if (gastoVivienda === 'Menos de un tercio (33%) de mis ingresos netos') {
+      perfil.vivienda = 'Bien';
+    }
+  }
+
+  // ========== EVALUACIÓN DE DEUDA (PREGUNTA 25) ==========
+  const porcentajeDeuda = userData.porcentaje_deuda || '';
+
+  if (porcentajeDeuda === 'Entre el 10% y el 20%' || porcentajeDeuda === 'Más del 20%') {
+    perfil.deuda = 'Mal';
+  } else if (porcentajeDeuda === 'Menos del 10%') {
+    perfil.deuda = 'Bien';
+  } else if (porcentajeDeuda === 'No tengo deuda') {
+    perfil.deuda = 'Super bien';
+  }
+
+  // ========== EVALUACIÓN AHORRO + INVERSIÓN (PREGUNTAS 21 + 26) ==========
+  // Convertir ahorro a número
+  let valorAhorro = 0;
+  if (porcentajeAhorro === 'No ahorro nada') {
+    valorAhorro = 0;
+  } else if (porcentajeAhorro === 'Menos del 10%') {
+    valorAhorro = 5;
+  } else if (porcentajeAhorro === 'Entre el 10% y el 30%') {
+    valorAhorro = 20;
+  } else if (porcentajeAhorro === 'Entre el 30% y el 40%') {
+    valorAhorro = 35;
+  } else if (porcentajeAhorro === 'Más del 40%') {
+    valorAhorro = 40;
+  }
+
+  // Convertir capacidad_recorte (asumiendo que es la pregunta de inversión) a número
+  const capacidadRecorte = userData.capacidad_recorte || '';
+  let valorInversion = 0;
+
+  if (capacidadRecorte === 'No lo sé') {
+    valorInversion = 0;
+  } else if (capacidadRecorte === 'Menos del 15%') {
+    valorInversion = 10;
+  } else if (capacidadRecorte === 'Entre el 15% y el 25%') {
+    valorInversion = 20;
+  } else if (capacidadRecorte === 'Entre el 25% y el 40%') {
+    valorInversion = 33;
+  } else if (capacidadRecorte === 'Más del 40%') {
+    valorInversion = 40;
+  }
+
+  const totalAhorroInversion = valorAhorro + valorInversion;
+
+  if (totalAhorroInversion > 40) {
+    perfil.ahorro_inversion = 'Muy bien';
+  } else if (totalAhorroInversion >= 25 && totalAhorroInversion <= 40) {
+    perfil.ahorro_inversion = 'Bien';
+  } else {
+    perfil.ahorro_inversion = 'Mal';
+  }
+
+  // ========== GENERAR RESUMEN DEL PERFIL ==========
+  const resumenPerfil = `Colchón: ${perfil.colchon} | Ahorro: ${perfil.ahorro} | Vivienda: ${perfil.vivienda} | Deuda: ${perfil.deuda} | Ahorro+Inversión: ${perfil.ahorro_inversion}`;
+
+  logDetailed('\n🎯 PERFILADO GENERADO:');
+  logDetailed(resumenPerfil);
+
+  return resumenPerfil;
 }
 
 function calculateRatios(userData) {
@@ -1568,31 +1790,35 @@ function setupTrigger() {
 function testScript() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME_DATA);
   const lastRow = sheet.getLastRow();
-  
-  const rowData = sheet.getRange(lastRow, 1, 1, CONFIG.COLUMNS.INSIGHT + 1).getValues()[0];
+
+  const rowData = sheet.getRange(lastRow, 1, 1, CONFIG.COLUMNS.PERFILADO + 1).getValues()[0];
   const userData = extractUserData(rowData);
-  const ratios = calculateRatios(userData);
-  
+
   Logger.log('=== DATOS EXTRAÍDOS ===');
   Logger.log('Email: ' + userData.email);
   Logger.log('Edad: ' + userData.edad);
   Logger.log('Situación laboral: ' + userData.situacion_laboral);
-  
+
+  Logger.log('\n=== PERFILADO ===');
+  const perfilado = generarPerfilado(userData);
+  Logger.log('Perfil: ' + perfilado);
+
+  const ratios = calculateRatios(userData);
   Logger.log('\n=== RATIOS CALCULADOS ===');
   Logger.log(JSON.stringify(ratios, null, 2));
-  
+
   const insight = generateInsight(userData, ratios);
   Logger.log('\n=== INSIGHT GENERADO ===');
   Logger.log(insight);
-  
+
   if (userData.email) {
     Logger.log('\n=== ENVIANDO A MAILCHIMP (3 PARTES) ===');
     ensureMergeFieldExists();
     const result = updateMailchimpMergeField(userData.email, insight, userData);
     Logger.log('Resultado: ' + (result ? 'ÉXITO' : 'ERROR'));
   }
-  
-  SpreadsheetApp.getUi().alert('✅ Prueba completada\n\nEl insight se dividió en 3 partes.\nRevisa los logs (Ver > Registros de ejecución)');
+
+  SpreadsheetApp.getUi().alert('✅ Prueba completada\n\nPerfilado y insight generados.\nEl insight se dividió en 3 partes.\nRevisa los logs (Ver > Registros de ejecución)');
 }
 
 function testMergeFieldCreation() {
