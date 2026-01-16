@@ -965,13 +965,69 @@ function generarPerfilado(userData) {
     perfil.ahorro_inversion = 'Mal';
   }
 
-  // ========== GENERAR RESUMEN DEL PERFIL ==========
-  const resumenPerfil = `Colchón: ${perfil.colchon} | Ahorro: ${perfil.ahorro} | Vivienda: ${perfil.vivienda} | Deuda: ${perfil.deuda} | Ahorro+Inversión: ${perfil.ahorro_inversion}`;
+  // ========== GENERAR RESUMEN DEL PERFIL CON JUSTIFICACIONES ==========
+  let resumenDetallado = '=== PERFILADO FINANCIERO ===\n\n';
+
+  // COLCHÓN
+  if (perfil.colchon) {
+    resumenDetallado += `📊 COLCHÓN: ${perfil.colchon}\n`;
+    if (esCuentaAjena || esJubilado || esFuncionario) {
+      resumenDetallado += `   → Situación: ${situacionLaboral} (criterio estándar)\n`;
+    } else if (esCuentaPropia) {
+      resumenDetallado += `   → Situación: Cuenta propia (criterio más exigente, mín. 6 meses)\n`;
+    } else if (noEstaTrabajando) {
+      const gastosFamiliar = gastosPara && gastosPara.toLowerCase().includes('unidad familiar');
+      resumenDetallado += `   → Situación: No trabaja + ${gastosFamiliar ? 'Unidad familiar (criterio estándar)' : 'Solo para mí (capacidad reacción limitada)'}\n`;
+    }
+    resumenDetallado += `   → Respuesta: "${colchonLiquido}"\n\n`;
+  }
+
+  // AHORRO
+  if (perfil.ahorro) {
+    resumenDetallado += `💰 AHORRO: ${perfil.ahorro}\n`;
+    if (viviendaPrincipal.includes('hipoteca')) {
+      resumenDetallado += `   → Contexto: Hipoteca (Mal: ≤10%, Bien: 10-30%, Super bien: ≥30%)\n`;
+    } else if (viviendaPrincipal.includes('alquiler')) {
+      resumenDetallado += `   → Contexto: Alquiler (Mal: ≤30%, Bien: 30-40%, Super bien: >40%)\n`;
+    } else if (viviendaPrincipal.includes('pagado') || viviendaPrincipal.includes('pagada')) {
+      resumenDetallado += `   → Contexto: Vivienda pagada (Mal: ≤40%, Bien: >40%)\n`;
+    }
+    resumenDetallado += `   → Respuesta: "${porcentajeAhorro}"\n\n`;
+  }
+
+  // VIVIENDA
+  if (perfil.vivienda) {
+    resumenDetallado += `🏠 GASTO VIVIENDA: ${perfil.vivienda}\n`;
+    if (viviendaPrincipal.includes('hipoteca')) {
+      resumenDetallado += `   → Contexto: Hipoteca (Mal: ≥40%, Bien: 33-40%, Super bien: <33%)\n`;
+    } else if (viviendaPrincipal.includes('alquiler')) {
+      resumenDetallado += `   → Contexto: Alquiler (Mal: ≥33%, Bien: <33%)\n`;
+    } else if (viviendaPrincipal.includes('pagado') || viviendaPrincipal.includes('pagada')) {
+      resumenDetallado += `   → Contexto: Vivienda pagada (Mal: ≥33%, Bien: <33%)\n`;
+    }
+    resumenDetallado += `   → Respuesta: "${gastoVivienda}"\n\n`;
+  }
+
+  // DEUDA
+  if (perfil.deuda) {
+    resumenDetallado += `💳 DEUDA: ${perfil.deuda}\n`;
+    resumenDetallado += `   → Criterio: Mal: ≥10%, Bien: <10%, Super bien: Sin deuda\n`;
+    resumenDetallado += `   → Respuesta: "${porcentajeDeuda}"\n\n`;
+  }
+
+  // AHORRO + INVERSIÓN
+  if (perfil.ahorro_inversion) {
+    resumenDetallado += `📈 AHORRO + INVERSIÓN: ${perfil.ahorro_inversion}\n`;
+    resumenDetallado += `   → Criterio: Muy bien: >40%, Bien: 25-40%, Mal: <25%\n`;
+    resumenDetallado += `   → Ahorro: ${valorAhorro}% (de "${porcentajeAhorro}")\n`;
+    resumenDetallado += `   → Inversión: ${valorInversion}% (de "${capacidadRecorte}")\n`;
+    resumenDetallado += `   → Total: ${totalAhorroInversion}%\n`;
+  }
 
   logDetailed('\n🎯 PERFILADO GENERADO:');
-  logDetailed(resumenPerfil);
+  logDetailed(resumenDetallado);
 
-  return resumenPerfil;
+  return resumenDetallado;
 }
 
 function calculateRatios(userData) {
