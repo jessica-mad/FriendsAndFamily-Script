@@ -1102,7 +1102,7 @@ function generarPerfilado(userData) {
   }
 
   // ========== GENERAR RESUMEN DEL PERFIL CON JUSTIFICACIONES ==========
-  let resumenDetallado = '=== PERFILADO FINANCIERO ===\n\n';
+  let resumenDetallado = '▼▼▼ PERFILADO FINANCIERO ▼▼▼\n\n';
 
   // COLCHÓN
   if (perfil.colchon) {
