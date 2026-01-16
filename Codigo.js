@@ -1157,7 +1157,25 @@ function generarPerfilado(userData) {
     resumenDetallado += `   → Criterio: Muy bien: >40%, Bien: 25-40%, Mal: <25%\n`;
     resumenDetallado += `   → Ahorro (P21): ${valorAhorro}% (de "${porcentajeAhorro}")\n`;
     resumenDetallado += `   → Capacidad Reacción (P26): ${valorCapacidadReaccion}% (de "${capacidadRecorte}")\n`;
-    resumenDetallado += `   → Total: ${totalAhorroCapacidadReaccion}%\n`;
+    resumenDetallado += `   → Total: ${totalAhorroCapacidadReaccion}%\n\n`;
+  }
+
+  // PREOCUPACIONES Y NECESIDADES
+  const temasPreocupan = userData.temas_preocupan || '';
+  const loQueNecesitas = userData.lo_que_necesitas || '';
+
+  if (temasPreocupan || loQueNecesitas) {
+    resumenDetallado += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+    if (temasPreocupan) {
+      resumenDetallado += `❓ TEMAS QUE TE PREOCUPAN (P17):\n`;
+      resumenDetallado += `   ${temasPreocupan}\n\n`;
+    }
+
+    if (loQueNecesitas) {
+      resumenDetallado += `💡 LO QUE NECESITAS (P18):\n`;
+      resumenDetallado += `   ${loQueNecesitas}\n`;
+    }
   }
 
   logDetailed('\n🎯 PERFILADO GENERADO:');
