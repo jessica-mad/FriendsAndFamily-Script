@@ -910,7 +910,7 @@ function extractUserData(rowData) {
 
 /**
  * Genera el perfil financiero del usuario antes de crear insights
- * Evalúa múltiples variables: colchón, ahorro, vivienda, deuda, inversión
+ * Evalúa múltiples variables: colchón, ahorro, vivienda, deuda, capacidad de reacción
  */
 function generarPerfilado(userData) {
   const perfil = {
@@ -918,7 +918,7 @@ function generarPerfilado(userData) {
     ahorro: '',
     vivienda: '',
     deuda: '',
-    ahorro_inversion: ''
+    ahorro_capacidad_reaccion: ''
   };
 
   // ========== EVALUACIÓN DEL COLCHÓN (PREGUNTA 3 + 5) ==========
@@ -1060,8 +1060,8 @@ function generarPerfilado(userData) {
     perfil.deuda = 'Super bien';
   }
 
-  // ========== EVALUACIÓN AHORRO + INVERSIÓN (PREGUNTAS 21 + 26) ==========
-  // Convertir ahorro a número
+  // ========== EVALUACIÓN AHORRO + CAPACIDAD DE REACCIÓN (PREGUNTAS 21 + 26) ==========
+  // Convertir ahorro a número (Pregunta 21)
   let valorAhorro = 0;
   if (porcentajeAhorro === 'No ahorro nada') {
     valorAhorro = 0;
@@ -1075,30 +1075,30 @@ function generarPerfilado(userData) {
     valorAhorro = 40;
   }
 
-  // Convertir capacidad_recorte (asumiendo que es la pregunta de inversión) a número
+  // Convertir capacidad de reacción a número (Pregunta 26)
   const capacidadRecorte = userData.capacidad_recorte || '';
-  let valorInversion = 0;
+  let valorCapacidadReaccion = 0;
 
   if (capacidadRecorte === 'No lo sé') {
-    valorInversion = 0;
+    valorCapacidadReaccion = 0;
   } else if (capacidadRecorte === 'Menos del 15%') {
-    valorInversion = 10;
+    valorCapacidadReaccion = 10;
   } else if (capacidadRecorte === 'Entre el 15% y el 25%') {
-    valorInversion = 20;
+    valorCapacidadReaccion = 20;
   } else if (capacidadRecorte === 'Entre el 25% y el 40%') {
-    valorInversion = 33;
+    valorCapacidadReaccion = 33;
   } else if (capacidadRecorte === 'Más del 40%') {
-    valorInversion = 40;
+    valorCapacidadReaccion = 40;
   }
 
-  const totalAhorroInversion = valorAhorro + valorInversion;
+  const totalAhorroCapacidadReaccion = valorAhorro + valorCapacidadReaccion;
 
-  if (totalAhorroInversion > 40) {
-    perfil.ahorro_inversion = 'Muy bien';
-  } else if (totalAhorroInversion >= 25 && totalAhorroInversion <= 40) {
-    perfil.ahorro_inversion = 'Bien';
+  if (totalAhorroCapacidadReaccion > 40) {
+    perfil.ahorro_capacidad_reaccion = 'Muy bien';
+  } else if (totalAhorroCapacidadReaccion >= 25 && totalAhorroCapacidadReaccion <= 40) {
+    perfil.ahorro_capacidad_reaccion = 'Bien';
   } else {
-    perfil.ahorro_inversion = 'Mal';
+    perfil.ahorro_capacidad_reaccion = 'Mal';
   }
 
   // ========== GENERAR RESUMEN DEL PERFIL CON JUSTIFICACIONES ==========
@@ -1151,13 +1151,13 @@ function generarPerfilado(userData) {
     resumenDetallado += `   → Respuesta: "${porcentajeDeuda}"\n\n`;
   }
 
-  // AHORRO + INVERSIÓN
-  if (perfil.ahorro_inversion) {
-    resumenDetallado += `📈 AHORRO + INVERSIÓN: ${perfil.ahorro_inversion}\n`;
+  // AHORRO + CAPACIDAD DE REACCIÓN
+  if (perfil.ahorro_capacidad_reaccion) {
+    resumenDetallado += `📈 AHORRO + CAPACIDAD DE REACCIÓN: ${perfil.ahorro_capacidad_reaccion}\n`;
     resumenDetallado += `   → Criterio: Muy bien: >40%, Bien: 25-40%, Mal: <25%\n`;
-    resumenDetallado += `   → Ahorro: ${valorAhorro}% (de "${porcentajeAhorro}")\n`;
-    resumenDetallado += `   → Inversión: ${valorInversion}% (de "${capacidadRecorte}")\n`;
-    resumenDetallado += `   → Total: ${totalAhorroInversion}%\n`;
+    resumenDetallado += `   → Ahorro (P21): ${valorAhorro}% (de "${porcentajeAhorro}")\n`;
+    resumenDetallado += `   → Capacidad Reacción (P26): ${valorCapacidadReaccion}% (de "${capacidadRecorte}")\n`;
+    resumenDetallado += `   → Total: ${totalAhorroCapacidadReaccion}%\n`;
   }
 
   logDetailed('\n🎯 PERFILADO GENERADO:');
