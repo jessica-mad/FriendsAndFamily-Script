@@ -638,19 +638,18 @@ function processRowInsight(sheet, rowNumber) {
       Logger.log(`ℹ️ Fila ${rowNumber}: Usando perfilado existente`);
     }
 
-    // ========== GENERAR RESPUESTAS LITERALES PARA EL INSIGHT ==========
+    // ========== GENERAR RESPUESTAS LITERALES ==========
     const respuestasLiterales = generarRespuestasLiterales(userData, resultadoPerfilado.perfil);
-    Logger.log(`📝 Respuestas literales: ${respuestasLiterales.join(', ')}`);
+    Logger.log(`📝 Respuestas literales generadas: ${respuestasLiterales.join(', ')}`);
 
-    // ========== GENERAR INSIGHT DESPUÉS ==========
-    const ratios = calculateRatios(userData);
-    const insight = generateInsight(userData, ratios, respuestasLiterales);
+    // ========== GENERAR INSIGHT CON OPENAI BUSCANDO EN ÁRBOL DE DECISIÓN ==========
+    const insight = generateInsightFromArbolDecision(respuestasLiterales);
 
-    if (insight && insight.length > 50) {
+    if (insight && insight.length > 10) {
       insightCell.setValue(insight);
-      Logger.log(`✅ Fila ${rowNumber}: Insight generado`);
+      Logger.log(`✅ Fila ${rowNumber}: Insight generado desde árbol de decisión`);
 
-        // Crear/actualizar contacto en Mailchimp solo con tag
+      // Crear/actualizar contacto en Mailchimp solo con tag
       Utilities.sleep(1000);
       const created = createOrUpdateMailchimpContact(userData.email, userData);
       if (created) {
@@ -857,14 +856,12 @@ function onFormSubmit(e) {
       Logger.log('ℹ️ Usando perfilado existente');
     }
 
-    // ========== GENERAR RESPUESTAS LITERALES PARA EL INSIGHT ==========
+    // ========== GENERAR RESPUESTAS LITERALES ==========
     const respuestasLiterales = generarRespuestasLiterales(userData, resultadoPerfilado.perfil);
-    Logger.log('📝 Respuestas literales: ' + respuestasLiterales.join(', '));
+    Logger.log('📝 Respuestas literales generadas: ' + respuestasLiterales.join(', '));
 
-    // ========== GENERAR INSIGHT DESPUÉS ==========
-    const ratios = calculateRatios(userData);
-    const insight = generateInsight(userData, ratios, respuestasLiterales);
-
+    // ========== GENERAR INSIGHT CON OPENAI BUSCANDO EN ÁRBOL DE DECISIÓN ==========
+    const insight = generateInsightFromArbolDecision(respuestasLiterales);
     insightCell.setValue(insight);
 
     const email = rowData[CONFIG.COLUMNS.EMAIL];
@@ -1362,8 +1359,85 @@ function calculateRatios(userData) {
 // para que el modelo de IA haga la estimación del estado financiero
 
 // ============================================================================
-// GENERACIÓN DE INSIGHT CON OPENAI
+// GENERACIÓN DE INSIGHT CON OPENAI - DESDE ÁRBOL DE DECISIÓN
 // ============================================================================
+
+/**
+ * Genera el insight buscando los textos literales en el árbol de decisión
+ * OpenAI busca y devuelve exactamente el texto que corresponde a cada respuesta literal
+ */
+function generateInsightFromArbolDecision(respuestasLiterales) {
+  try {
+    const prompts = getPromptsFromSheet();
+    const arbolDecision = prompts.arbolDecision || '';
+
+    if (!arbolDecision || arbolDecision.trim() === '') {
+      Logger.log('⚠️ El árbol de decisión está vacío en D4');
+      return 'Error: Árbol de decisión no configurado';
+    }
+
+    // Crear prompt para OpenAI
+    const systemPrompt = `Eres un asistente que extrae textos literales de un árbol de decisión.
+
+Tu tarea es:
+1. Recibir una lista de respuestas literales (claves)
+2. Buscar en el árbol de decisión el texto completo que corresponde a cada clave
+3. Devolver EXACTAMENTE el texto que está en el árbol de decisión para cada clave
+4. Si una clave no se encuentra, indicar "No encontrado"
+
+IMPORTANTE: Debes devolver el texto LITERAL del árbol de decisión, sin modificar ni interpretar.`;
+
+    const userPrompt = `Árbol de decisión:
+${arbolDecision}
+
+Respuestas literales a buscar:
+${respuestasLiterales.join('\n')}
+
+Por favor, busca en el árbol de decisión el texto completo que corresponde a cada una de las respuestas literales anteriores y devuélvelo exactamente como está escrito.`;
+
+    Logger.log('🤖 Llamando a OpenAI con árbol de decisión...');
+
+    const response = UrlFetchApp.fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'post',
+      headers: {
+        'Authorization': 'Bearer ' + CONFIG.OPENAI_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify({
+        model: 'gpt-4',
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt
+          },
+          {
+            role: 'user',
+            content: userPrompt
+          }
+        ],
+        temperature: 0.1, // Temperatura baja para respuestas más literales
+        max_tokens: 2000
+      }),
+      muteHttpExceptions: true
+    });
+
+    const result = JSON.parse(response.getContentText());
+
+    if (result.error) {
+      Logger.log('Error OpenAI API: ' + JSON.stringify(result.error));
+      return 'Error al generar insight: ' + result.error.message;
+    }
+
+    const insightGenerado = result.choices[0].message.content;
+    Logger.log('✅ Insight generado desde árbol de decisión');
+
+    return insightGenerado;
+
+  } catch (error) {
+    Logger.log('Error OpenAI: ' + error.toString());
+    return 'Error al generar insight. Revisa los logs.';
+  }
+}
 
 function generateInsight(userData, ratios, respuestasLiterales) {
   try {
@@ -2182,11 +2256,8 @@ function testScript() {
   const respuestasLiterales = generarRespuestasLiterales(userData, resultadoPerfilado.perfil);
   Logger.log('Respuestas: ' + respuestasLiterales.join(', '));
 
-  const ratios = calculateRatios(userData);
-  Logger.log('\n=== RATIOS CALCULADOS ===');
-  Logger.log(JSON.stringify(ratios, null, 2));
-
-  const insight = generateInsight(userData, ratios, respuestasLiterales);
+  Logger.log('\n=== GENERANDO INSIGHT DESDE ÁRBOL DE DECISIÓN ===');
+  const insight = generateInsightFromArbolDecision(respuestasLiterales);
   Logger.log('\n=== INSIGHT GENERADO ===');
   Logger.log(insight);
 
@@ -2197,7 +2268,7 @@ function testScript() {
     Logger.log('Resultado: ' + (result ? 'ÉXITO' : 'ERROR'));
   }
 
-  SpreadsheetApp.getUi().alert('✅ Prueba completada\n\nPerfilado y insight generados.\nEl insight se dividió en 3 partes.\nRevisa los logs (Ver > Registros de ejecución)');
+  SpreadsheetApp.getUi().alert('✅ Prueba completada\n\nPerfilado e insight generados desde árbol de decisión.\nEl insight se dividió en 3 partes.\nRevisa los logs (Ver > Registros de ejecución)');
 }
 
 function testMergeFieldCreation() {
