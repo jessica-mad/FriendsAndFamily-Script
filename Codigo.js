@@ -1381,11 +1381,14 @@ function generateInsightFromArbolDecision(respuestasLiterales) {
 
 Tu tarea es:
 1. Recibir una lista de respuestas literales (claves)
-2. Buscar en el árbol de decisión el texto completo que corresponde a cada clave
-3. Devolver EXACTAMENTE el texto que está en el árbol de decisión para cada clave
-4. Si una clave no se encuentra, indicar "No encontrado"
+2. Buscar en el árbol de decisión el texto/contenido que corresponde a cada clave
+3. Devolver SOLO el contenido/texto asociado a cada clave, SIN incluir la clave misma
+4. Si una clave no se encuentra, omitirla
 
-IMPORTANTE: Debes devolver el texto LITERAL del árbol de decisión, sin modificar ni interpretar.`;
+IMPORTANTE:
+- NO incluyas las claves en la respuesta
+- Devuelve SOLO el texto/contenido literal del árbol de decisión
+- Separa cada contenido con un salto de línea`;
 
     const userPrompt = `Árbol de decisión:
 ${arbolDecision}
@@ -1393,7 +1396,13 @@ ${arbolDecision}
 Respuestas literales a buscar:
 ${respuestasLiterales.join('\n')}
 
-Por favor, busca en el árbol de decisión el texto completo que corresponde a cada una de las respuestas literales anteriores y devuélvelo exactamente como está escrito.`;
+Por favor, busca en el árbol de decisión el texto/contenido que corresponde a cada una de las respuestas literales anteriores.
+
+Devuelve SOLO el contenido, SIN incluir las claves.
+
+Ejemplo:
+Si la clave es "Colchon bien, cuenta ajena" y en el árbol dice "Colchon bien, cuenta ajena: Tu colchón está bien..."
+Devuelve SOLO: "Tu colchón está bien..."`;
 
     Logger.log('🤖 Llamando a OpenAI con árbol de decisión...');
 
