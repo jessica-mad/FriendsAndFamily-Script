@@ -506,8 +506,8 @@ function processRowPerfilado(sheet, rowNumber) {
     }
 
     // Generar perfilado
-    const perfilado = generarPerfilado(userData);
-    perfiladoCell.setValue(perfilado);
+    const resultadoPerfilado = generarPerfilado(userData);
+    perfiladoCell.setValue(resultadoPerfilado.resumen);
     Logger.log(`✅ Fila ${rowNumber}: Perfilado generado`);
 
     return true;
@@ -626,19 +626,25 @@ function processRowInsight(sheet, rowNumber) {
 
     // ========== GENERAR PERFILADO SI NO EXISTE ==========
     const perfiladoCell = sheet.getRange(rowNumber, CONFIG.COLUMNS.PERFILADO + 1);
-    let perfilado = perfiladoCell.getValue();
+    let perfiladoExistente = perfiladoCell.getValue();
 
-    if (!perfilado || perfilado === '') {
-      perfilado = generarPerfilado(userData);
-      perfiladoCell.setValue(perfilado);
+    // Siempre calcular el perfil para las respuestas literales
+    const resultadoPerfilado = generarPerfilado(userData);
+
+    if (!perfiladoExistente || perfiladoExistente === '') {
+      perfiladoCell.setValue(resultadoPerfilado.resumen);
       Logger.log(`✅ Fila ${rowNumber}: Perfilado generado`);
     } else {
       Logger.log(`ℹ️ Fila ${rowNumber}: Usando perfilado existente`);
     }
 
+    // ========== GENERAR RESPUESTAS LITERALES PARA EL INSIGHT ==========
+    const respuestasLiterales = generarRespuestasLiterales(userData, resultadoPerfilado.perfil);
+    Logger.log(`📝 Respuestas literales: ${respuestasLiterales.join(', ')}`);
+
     // ========== GENERAR INSIGHT DESPUÉS ==========
     const ratios = calculateRatios(userData);
-    const insight = generateInsight(userData, ratios);
+    const insight = generateInsight(userData, ratios, respuestasLiterales);
 
     if (insight && insight.length > 50) {
       insightCell.setValue(insight);
@@ -839,19 +845,25 @@ function onFormSubmit(e) {
 
     // ========== GENERAR PERFILADO SI NO EXISTE ==========
     const perfiladoCell = sheet.getRange(lastRow, CONFIG.COLUMNS.PERFILADO + 1);
-    let perfilado = perfiladoCell.getValue();
+    let perfiladoExistente = perfiladoCell.getValue();
 
-    if (!perfilado || perfilado === '') {
-      perfilado = generarPerfilado(userData);
-      perfiladoCell.setValue(perfilado);
+    // Siempre calcular el perfil para las respuestas literales
+    const resultadoPerfilado = generarPerfilado(userData);
+
+    if (!perfiladoExistente || perfiladoExistente === '') {
+      perfiladoCell.setValue(resultadoPerfilado.resumen);
       Logger.log('✅ Perfilado generado');
     } else {
       Logger.log('ℹ️ Usando perfilado existente');
     }
 
+    // ========== GENERAR RESPUESTAS LITERALES PARA EL INSIGHT ==========
+    const respuestasLiterales = generarRespuestasLiterales(userData, resultadoPerfilado.perfil);
+    Logger.log('📝 Respuestas literales: ' + respuestasLiterales.join(', '));
+
     // ========== GENERAR INSIGHT DESPUÉS ==========
     const ratios = calculateRatios(userData);
-    const insight = generateInsight(userData, ratios);
+    const insight = generateInsight(userData, ratios, respuestasLiterales);
 
     insightCell.setValue(insight);
 
@@ -1181,7 +1193,152 @@ function generarPerfilado(userData) {
   logDetailed('\n🎯 PERFILADO GENERADO:');
   logDetailed(resumenDetallado);
 
-  return resumenDetallado;
+  return {
+    resumen: resumenDetallado,
+    perfil: perfil
+  };
+}
+
+// ============================================================================
+// GENERAR RESPUESTAS LITERALES PARA EL ÁRBOL DE DECISIÓN
+// ============================================================================
+
+/**
+ * Genera las respuestas literales basadas en el perfilado
+ * Estas respuestas se enviarán al modelo de IA para generar el insight
+ */
+function generarRespuestasLiterales(userData, perfil) {
+  const respuestas = [];
+
+  // ========== COLCHÓN ==========
+  const situacionLaboral = userData.situacion_laboral || '';
+  const gastosPara = userData.gastos_para || '';
+  const situacionNorm = situacionLaboral.toLowerCase();
+
+  const esCuentaAjena = situacionNorm.includes('cuenta ajena');
+  const esJubilado = situacionNorm.includes('jubilado');
+  const esFuncionario = situacionNorm.includes('funcionario');
+  const esCuentaPropia = situacionNorm.includes('cuenta propia');
+  const noEstaTrabajando = situacionNorm.includes('no estoy trabajando');
+
+  if (perfil.colchon) {
+    const estadoColchon = perfil.colchon.toLowerCase();
+
+    if (esCuentaAjena || esJubilado || esFuncionario) {
+      if (estadoColchon.includes('mal')) {
+        respuestas.push('Colchon mal, cuenta ajena');
+      } else if (estadoColchon.includes('bien') && !estadoColchon.includes('super')) {
+        respuestas.push('Colchon bien, cuenta ajena');
+      } else if (estadoColchon.includes('super bien')) {
+        respuestas.push('Colchon super bien, cuenta ajena');
+      }
+    } else if (esCuentaPropia) {
+      if (estadoColchon.includes('mal')) {
+        respuestas.push('Colchon mal, cuenta propia');
+      } else if (estadoColchon.includes('bien')) {
+        respuestas.push('Colchon bien, cuenta propia');
+      }
+    } else if (noEstaTrabajando) {
+      const gastosFamiliar = gastosPara && gastosPara.toLowerCase().includes('unidad familiar');
+
+      if (gastosFamiliar) {
+        // Criterio estándar
+        if (estadoColchon.includes('mal')) {
+          respuestas.push('Colchon mal, cuenta ajena');
+        } else if (estadoColchon.includes('bien') && !estadoColchon.includes('super')) {
+          respuestas.push('Colchon bien, cuenta ajena');
+        } else if (estadoColchon.includes('super bien')) {
+          respuestas.push('Colchon super bien, cuenta ajena');
+        }
+      }
+      // Si es "solo para mí", ya está impactado en capacidad de reacción
+    }
+  }
+
+  // ========== AHORRO Y VIVIENDA ==========
+  const viviendaPrincipal = userData.vivienda_principal || '';
+
+  if (perfil.ahorro) {
+    const estadoAhorro = perfil.ahorro.toLowerCase();
+
+    if (viviendaPrincipal.includes('hipoteca')) {
+      if (estadoAhorro === 'mal') {
+        respuestas.push('Ahorro mal con hipoteca');
+      } else if (estadoAhorro === 'bien') {
+        respuestas.push('Ahorro bien con hipoteca');
+      } else if (estadoAhorro === 'super bien') {
+        respuestas.push('Ahorro super bien con hipoteca');
+      }
+    } else if (viviendaPrincipal.includes('alquiler')) {
+      if (estadoAhorro === 'mal') {
+        respuestas.push('Ahorro mal de alquiler');
+      } else if (estadoAhorro === 'bien') {
+        respuestas.push('Ahorro bien de alquiler');
+      } else if (estadoAhorro === 'super bien') {
+        respuestas.push('Ahorro super bien de alquiler');
+      }
+    } else if (viviendaPrincipal.includes('pagado') || viviendaPrincipal.includes('pagada')) {
+      if (estadoAhorro === 'mal') {
+        respuestas.push('Ahorro mal hipoteca ya apagada');
+      } else if (estadoAhorro === 'bien') {
+        respuestas.push('Ahorro bien con hipoteca ya pagada');
+      }
+    }
+  }
+
+  if (perfil.vivienda) {
+    const estadoVivienda = perfil.vivienda.toLowerCase();
+
+    if (viviendaPrincipal.includes('hipoteca')) {
+      if (estadoVivienda === 'mal') {
+        respuestas.push('Vivienda mal con hipoteca');
+      } else if (estadoVivienda === 'bien') {
+        respuestas.push('Vivienda bien con hipoteca');
+      } else if (estadoVivienda === 'super bien') {
+        respuestas.push('Vivienda super bien con hipoteca');
+      }
+    } else if (viviendaPrincipal.includes('alquiler')) {
+      if (estadoVivienda === 'mal') {
+        respuestas.push('Vivienda mal de alquiler');
+      } else if (estadoVivienda === 'bien') {
+        respuestas.push('Vivienda bien de alquiler');
+      }
+    } else if (viviendaPrincipal.includes('pagado') || viviendaPrincipal.includes('pagada')) {
+      if (estadoVivienda === 'mal') {
+        respuestas.push('Vivienda mal ya pagada');
+      } else if (estadoVivienda === 'bien') {
+        respuestas.push('Vivienda bien ya pagada');
+      }
+    }
+  }
+
+  // ========== DEUDA ==========
+  if (perfil.deuda) {
+    const estadoDeuda = perfil.deuda.toLowerCase();
+
+    if (estadoDeuda === 'mal') {
+      respuestas.push('Deuda mal');
+    } else if (estadoDeuda === 'bien') {
+      respuestas.push('Deuda bien');
+    } else if (estadoDeuda === 'super bien') {
+      respuestas.push('Deuda super bien, no tengo deuda');
+    }
+  }
+
+  // ========== CAPACIDAD DE REACCIÓN ==========
+  if (perfil.ahorro_capacidad_reaccion) {
+    const estadoCapacidad = perfil.ahorro_capacidad_reaccion.toLowerCase();
+
+    if (estadoCapacidad === 'mal') {
+      respuestas.push('capacidad de reaccion mal');
+    } else if (estadoCapacidad === 'bien') {
+      respuestas.push('capacidad de reacción bien');
+    } else if (estadoCapacidad === 'muy bien') {
+      respuestas.push('capacidad de reacción muy bien');
+    }
+  }
+
+  return respuestas;
 }
 
 function calculateRatios(userData) {
@@ -1208,10 +1365,10 @@ function calculateRatios(userData) {
 // GENERACIÓN DE INSIGHT CON OPENAI
 // ============================================================================
 
-function generateInsight(userData, ratios) {
+function generateInsight(userData, ratios, respuestasLiterales) {
   try {
     const prompts = getPromptsFromSheet();
-    const userPrompt = buildUserPromptFromTemplate(prompts.userPromptTemplate, userData, ratios);
+    const userPrompt = buildUserPromptFromTemplate(prompts.userPromptTemplate, userData, ratios, respuestasLiterales);
     
     const response = UrlFetchApp.fetch('https://api.openai.com/v1/chat/completions', {
       method: 'post',
@@ -1252,10 +1409,15 @@ function generateInsight(userData, ratios) {
   }
 }
 
-function buildUserPromptFromTemplate(template, userData, ratios) {
+function buildUserPromptFromTemplate(template, userData, ratios, respuestasLiterales) {
   const umbralColchon = ratios.es_cuenta_ajena ?
     '- Colchón mínimo: 3 meses | Recomendable: 6 meses' :
     '- Colchón mínimo: 6 meses | Recomendable: 12 meses';
+
+  // Convertir respuestas literales a texto
+  const respuestasTexto = respuestasLiterales && respuestasLiterales.length > 0
+    ? respuestasLiterales.join('\n')
+    : 'No se generaron respuestas literales';
 
   // Soportar tanto ${variable} como {{variable}}
   return template
@@ -1336,7 +1498,10 @@ function buildUserPromptFromTemplate(template, userData, ratios) {
     .replace(/\{\{ratios\.ingresos_netos_mensuales\}\}/g, ratios.ingresos_brutos)
     .replace(/\{\{ingresos_netos_mensuales\}\}/g, ratios.ingresos_brutos)
     .replace(/\$\{ratios\.es_cuenta_ajena \? [^}]*\}/g, umbralColchon)
-    .replace(/\{\{umbral_colchon\}\}/g, umbralColchon);
+    .replace(/\{\{umbral_colchon\}\}/g, umbralColchon)
+    // Respuestas literales del perfilado
+    .replace(/\$\{respuestas_literales\}/g, respuestasTexto)
+    .replace(/\{\{respuestas_literales\}\}/g, respuestasTexto);
 }
 
 // ============================================================================
@@ -2010,14 +2175,18 @@ function testScript() {
   Logger.log('Situación laboral: ' + userData.situacion_laboral);
 
   Logger.log('\n=== PERFILADO ===');
-  const perfilado = generarPerfilado(userData);
-  Logger.log('Perfil: ' + perfilado);
+  const resultadoPerfilado = generarPerfilado(userData);
+  Logger.log('Perfil: ' + resultadoPerfilado.resumen);
+
+  Logger.log('\n=== RESPUESTAS LITERALES ===');
+  const respuestasLiterales = generarRespuestasLiterales(userData, resultadoPerfilado.perfil);
+  Logger.log('Respuestas: ' + respuestasLiterales.join(', '));
 
   const ratios = calculateRatios(userData);
   Logger.log('\n=== RATIOS CALCULADOS ===');
   Logger.log(JSON.stringify(ratios, null, 2));
 
-  const insight = generateInsight(userData, ratios);
+  const insight = generateInsight(userData, ratios, respuestasLiterales);
   Logger.log('\n=== INSIGHT GENERADO ===');
   Logger.log(insight);
 
