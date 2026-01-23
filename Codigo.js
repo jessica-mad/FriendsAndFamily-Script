@@ -638,19 +638,18 @@ function processRowInsight(sheet, rowNumber) {
       Logger.log(`ℹ️ Fila ${rowNumber}: Usando perfilado existente`);
     }
 
-    // ========== GENERAR RESPUESTAS LITERALES PARA EL INSIGHT ==========
+    // ========== GENERAR RESPUESTAS LITERALES COMO INSIGHT ==========
     const respuestasLiterales = generarRespuestasLiterales(userData, resultadoPerfilado.perfil);
-    Logger.log(`📝 Respuestas literales: ${respuestasLiterales.join(', ')}`);
+    const insightTexto = respuestasLiterales.join('\n');
 
-    // ========== GENERAR INSIGHT DESPUÉS ==========
-    const ratios = calculateRatios(userData);
-    const insight = generateInsight(userData, ratios, respuestasLiterales);
+    Logger.log(`📝 Respuestas literales generadas: ${respuestasLiterales.join(', ')}`);
 
-    if (insight && insight.length > 50) {
-      insightCell.setValue(insight);
-      Logger.log(`✅ Fila ${rowNumber}: Insight generado`);
+    // Guardar respuestas literales directamente como insight (sin llamar a OpenAI)
+    if (insightTexto && insightTexto.length > 0) {
+      insightCell.setValue(insightTexto);
+      Logger.log(`✅ Fila ${rowNumber}: Insight generado con respuestas literales`);
 
-        // Crear/actualizar contacto en Mailchimp solo con tag
+      // Crear/actualizar contacto en Mailchimp solo con tag
       Utilities.sleep(1000);
       const created = createOrUpdateMailchimpContact(userData.email, userData);
       if (created) {
@@ -857,15 +856,14 @@ function onFormSubmit(e) {
       Logger.log('ℹ️ Usando perfilado existente');
     }
 
-    // ========== GENERAR RESPUESTAS LITERALES PARA EL INSIGHT ==========
+    // ========== GENERAR RESPUESTAS LITERALES COMO INSIGHT ==========
     const respuestasLiterales = generarRespuestasLiterales(userData, resultadoPerfilado.perfil);
-    Logger.log('📝 Respuestas literales: ' + respuestasLiterales.join(', '));
+    const insightTexto = respuestasLiterales.join('\n');
 
-    // ========== GENERAR INSIGHT DESPUÉS ==========
-    const ratios = calculateRatios(userData);
-    const insight = generateInsight(userData, ratios, respuestasLiterales);
+    Logger.log('📝 Respuestas literales generadas: ' + respuestasLiterales.join(', '));
 
-    insightCell.setValue(insight);
+    // Guardar respuestas literales directamente como insight (sin llamar a OpenAI)
+    insightCell.setValue(insightTexto);
 
     const email = rowData[CONFIG.COLUMNS.EMAIL];
     if (email && email.includes('@')) {
@@ -2178,26 +2176,21 @@ function testScript() {
   const resultadoPerfilado = generarPerfilado(userData);
   Logger.log('Perfil: ' + resultadoPerfilado.resumen);
 
-  Logger.log('\n=== RESPUESTAS LITERALES ===');
+  Logger.log('\n=== RESPUESTAS LITERALES (INSIGHT) ===');
   const respuestasLiterales = generarRespuestasLiterales(userData, resultadoPerfilado.perfil);
+  const insightTexto = respuestasLiterales.join('\n');
   Logger.log('Respuestas: ' + respuestasLiterales.join(', '));
-
-  const ratios = calculateRatios(userData);
-  Logger.log('\n=== RATIOS CALCULADOS ===');
-  Logger.log(JSON.stringify(ratios, null, 2));
-
-  const insight = generateInsight(userData, ratios, respuestasLiterales);
-  Logger.log('\n=== INSIGHT GENERADO ===');
-  Logger.log(insight);
+  Logger.log('\n=== INSIGHT (TEXTO LITERAL) ===');
+  Logger.log(insightTexto);
 
   if (userData.email) {
     Logger.log('\n=== ENVIANDO A MAILCHIMP (3 PARTES) ===');
     ensureMergeFieldExists();
-    const result = updateMailchimpMergeField(userData.email, insight, userData);
+    const result = updateMailchimpMergeField(userData.email, insightTexto, userData);
     Logger.log('Resultado: ' + (result ? 'ÉXITO' : 'ERROR'));
   }
 
-  SpreadsheetApp.getUi().alert('✅ Prueba completada\n\nPerfilado y insight generados.\nEl insight se dividió en 3 partes.\nRevisa los logs (Ver > Registros de ejecución)');
+  SpreadsheetApp.getUi().alert('✅ Prueba completada\n\nPerfilado y respuestas literales generadas.\nEl insight se dividió en 3 partes.\nRevisa los logs (Ver > Registros de ejecución)');
 }
 
 function testMergeFieldCreation() {
