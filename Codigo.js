@@ -2401,15 +2401,9 @@ function lePreocupaElAhorro(userData) {
 function generarBloqueColchonArbol(userData, perfil) {
   const situacion = determinarSituacionLaboralParaColchon(userData);
   const estadoColchon = (perfil.colchon || '').toLowerCase();
-  const respuestaUsuario = userData.colchon_liquido || 'No especificado';
   const bloques = [];
 
-  bloques.push("Ver la respuesta de la pregunta 3.");
-  bloques.push("Solo va a tener impacto en lo relativo al colchón de emergencia. Pregunta 22.");
-  bloques.push("");
   bloques.push(ARBOL_TEXTOS.colchon[situacion].comun);
-  bloques.push("");
-  bloques.push(`Respondiste: ${respuestaUsuario}`);
   bloques.push("");
 
   const esMal = estadoColchon.includes('mal');
@@ -2485,33 +2479,20 @@ function generarInsightDesdeArbolDecision(userData, perfil) {
     const secciones = [];
 
     if (perfil.colchon) {
-      secciones.push("# 1. AUTÓNOMO/CUENTA AJENA");
-      secciones.push("");
       secciones.push(generarBloqueColchonArbol(userData, perfil));
-      secciones.push("");
-      secciones.push("---");
-      secciones.push("");
     }
 
     if (perfil.vivienda) {
-      secciones.push("# 2. ALQUILER/HIPOTECA/CASA PAGADA");
-      secciones.push("");
       secciones.push(generarBloqueViviendaArbol(userData, perfil));
-      secciones.push("");
-      secciones.push("---");
-      secciones.push("");
     }
 
     const bloqueAhorro = generarBloqueAhorroArbol(userData, perfil);
     if (bloqueAhorro) {
-      secciones.push("# 3. AHORRO");
-      secciones.push("");
       secciones.push(bloqueAhorro);
     }
 
-    const insightFinal = secciones.join('\n');
+    const insightFinal = secciones.join('\n\n');
     Logger.log('✅ Insight generado desde árbol de decisión');
-    Logger.log('📊 Tokens ahorrados: ~3500 tokens (100% de ahorro)');
     Logger.log(`📝 Longitud del insight: ${insightFinal.length} caracteres`);
 
     return insightFinal;
