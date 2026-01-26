@@ -404,19 +404,35 @@ function getPromptsFromSheet() {
 function generatePerfiladoForSelection() {
   const ui = SpreadsheetApp.getUi();
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME_DATA);
-  const selection = sheet.getActiveRange();
 
-  if (!selection) {
+  // Usar getActiveRangeList para soportar selecciones no contiguas
+  const rangeList = sheet.getActiveRangeList();
+
+  if (!rangeList) {
     ui.alert('❌ Selecciona las filas que deseas perfilar.');
     return;
   }
 
-  const firstRow = selection.getRow();
-  const numRows = selection.getNumRows();
+  // Obtener todas las filas únicas seleccionadas
+  const filasSeleccionadas = new Set();
+  rangeList.getRanges().forEach(range => {
+    const firstRow = range.getRow();
+    const numRows = range.getNumRows();
+    for (let i = 0; i < numRows; i++) {
+      filasSeleccionadas.add(firstRow + i);
+    }
+  });
+
+  const filasArray = Array.from(filasSeleccionadas).sort((a, b) => a - b);
+
+  if (filasArray.length === 0) {
+    ui.alert('❌ No se encontraron filas seleccionadas.');
+    return;
+  }
 
   const response = ui.alert(
     'Generar Perfilado',
-    `¿Generar perfilado para ${numRows} fila(s)?\nFilas: ${firstRow} a ${firstRow + numRows - 1}`,
+    `¿Generar perfilado para ${filasArray.length} fila(s)?\nFilas: ${filasArray.join(', ')}`,
     ui.ButtonSet.YES_NO
   );
 
@@ -425,15 +441,15 @@ function generatePerfiladoForSelection() {
   let processed = 0;
   let errors = 0;
 
-  for (let i = 0; i < numRows; i++) {
+  for (const rowNum of filasArray) {
     try {
-      if (processRowPerfilado(sheet, firstRow + i)) {
+      if (processRowPerfilado(sheet, rowNum)) {
         processed++;
       } else {
         errors++;
       }
     } catch (error) {
-      Logger.log(`Error fila ${firstRow + i}: ${error}`);
+      Logger.log(`Error fila ${rowNum}: ${error}`);
       errors++;
     }
     Utilities.sleep(100);
@@ -525,41 +541,57 @@ function processRowPerfilado(sheet, rowNumber) {
 function generateInsightsForSelection() {
   const ui = SpreadsheetApp.getUi();
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME_DATA);
-  const selection = sheet.getActiveRange();
-  
-  if (!selection) {
+
+  // Usar getActiveRangeList para soportar selecciones no contiguas
+  const rangeList = sheet.getActiveRangeList();
+
+  if (!rangeList) {
     ui.alert('❌ Selecciona las filas que deseas procesar.');
     return;
   }
-  
-  const firstRow = selection.getRow();
-  const numRows = selection.getNumRows();
-  
+
+  // Obtener todas las filas únicas seleccionadas
+  const filasSeleccionadas = new Set();
+  rangeList.getRanges().forEach(range => {
+    const firstRow = range.getRow();
+    const numRows = range.getNumRows();
+    for (let i = 0; i < numRows; i++) {
+      filasSeleccionadas.add(firstRow + i);
+    }
+  });
+
+  const filasArray = Array.from(filasSeleccionadas).sort((a, b) => a - b);
+
+  if (filasArray.length === 0) {
+    ui.alert('❌ No se encontraron filas seleccionadas.');
+    return;
+  }
+
   const response = ui.alert(
     'Generar Insights',
-    `¿Generar insights para ${numRows} fila(s)?\nFilas: ${firstRow} a ${firstRow + numRows - 1}`,
+    `¿Generar insights para ${filasArray.length} fila(s)?\nFilas: ${filasArray.join(', ')}`,
     ui.ButtonSet.YES_NO
   );
-  
+
   if (response !== ui.Button.YES) return;
-  
+
   let processed = 0;
   let errors = 0;
-  
-  for (let i = 0; i < numRows; i++) {
+
+  for (const rowNum of filasArray) {
     try {
-      if (processRowInsight(sheet, firstRow + i)) {
+      if (processRowInsight(sheet, rowNum)) {
         processed++;
       } else {
         errors++;
       }
     } catch (error) {
-      Logger.log(`Error fila ${firstRow + i}: ${error}`);
+      Logger.log(`Error fila ${rowNum}: ${error}`);
       errors++;
     }
     Utilities.sleep(500);
   }
-  
+
   ui.alert('✅ Completado', `Generados: ${processed}\nErrores: ${errors}`, ui.ButtonSet.OK);
 }
 
