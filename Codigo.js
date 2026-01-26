@@ -2363,13 +2363,54 @@ const ARBOL_TEXTOS = {
   },
 
   // ==========================================================================
-  // 3. AHORRO (cuando le preocupa)
+  // 3. AHORRO (estructura completa según preocupación)
   // ==========================================================================
   ahorro: {
-    general: "Nos transmites que entre los temas que te preocupan más está el ahorro y/o no llegar a final de mes.",
-    particular_prefix: "Ya habíamos comentado anteriormente acerca de tu ratio de ahorro. En concreto nos respondiste que tu ahorro era",
-    mal: "Falta texto para este caso: ahorro mal cuando le preocupa el ahorro (3.1.1)",
-    bien: "Falta texto para este caso: ahorro bien cuando le preocupa el ahorro (3.1.2)"
+    le_preocupa: {
+      general: "Nos transmites que entre los temas que te preocupan más está el ahorro y/o no llegar a final de mes.",
+      particular_prefix: "Ya habíamos comentado anteriormente acerca de tu ratio de ahorro. En concreto nos respondiste que tu ahorro era",
+      particular_suffix: "respecto a tus ingresos",
+      mal: {
+        no_preahorro: "El ratio de ahorro que tienes es mejorable. Te animamos a realizar transferencias periódicas nada más recibir tus ingresos. Es un muy buen hábito para generar ahorro, ya que te ayuda a no caer en gastos no necesarios al quitar el dinero de circulación. Seguro que empezando por aquí lograrás que el ahorro sea una preocupación menor.",
+        preahorro: "El ratio de ahorro que tienes es mejorable. Ya estás haciendo transferencias periódicas. Esa es una buena costumbre. Intenta siempre hacerlo al principio de cada mes, en cuanto te entre tu ingreso mensual.",
+        familia_grande: "Sabemos que el ahorro cuando se tiene una familia no es siempre sencillo. Si los gastos fijos son más altos, toca ajustar los gastos no imprescindibles.",
+        familia_pequena: "Te toca ajustar los gastos menos necesarios. Seguro que encuentras alguna manera de generar ahorro. Siempre hay algún gasto optimizable."
+      },
+      bien: {
+        intro: "Tu ratio de ahorro no está mal, por lo que lo primero es darte esa buena noticia y seguir animándote a que continúes con este buen hábito.",
+        no_preahorro: "Aunque tu ratio de ahorro no es malo, te animamos a realizar transferencias periódicas nada más recibir tus ingresos. Es un muy buen hábito para generar ahorro, ya que te ayuda a no caer en gastos no necesarios al quitar el dinero de circulación.",
+        preahorro: "Tu ratio de ahorro no es malo. Seguro que el estar haciendo transferencias periódicas es una de las claves para conseguirlo. Esa es una buena costumbre. Intenta siempre hacerlo al principio de cada mes, en cuanto te entre tu ingreso mensual."
+      }
+    },
+    no_le_preocupa: {
+      general: "",
+      particular_prefix: "Ya habíamos comentado anteriormente acerca de tu ratio de ahorro. En concreto nos respondiste que tu ahorro era",
+      particular_suffix: "respecto a tus ingresos",
+      mal: {
+        no_preahorro: "El ratio de ahorro que tienes es mejorable. Te animamos a realizar transferencias periódicas nada más recibir tus ingresos. Es un muy buen hábito para generar ahorro, ya que te ayuda a no caer en gastos no necesarios al quitar el dinero de circulación.",
+        preahorro: "El ratio de ahorro que tienes es mejorable. Ya estás haciendo transferencias periódicas. Esa es una buena costumbre. Intenta siempre hacerlo al principio de cada mes, en cuanto te entre tu ingreso mensual. El ahorro es la base del futuro económico que puedes construir.",
+        familia_grande: "Sabemos que el ahorro cuando se tiene una familia no es siempre sencillo. Si los gastos fijos son más altos, toca ajustar los gastos no imprescindibles.",
+        familia_pequena: "Te toca ajustar los gastos menos necesarios. Seguro que encuentras alguna manera de generar ahorro. Siempre hay algún gasto optimizable."
+      },
+      bien: {
+        intro: "Tu ratio de ahorro no está mal. Sigue así. Pon tu ahorro a trabajar. Busca invertirlo en productos que generen interés compuesto. Hay que hacer trabajar el dinero por ti. Tu dinero tiene que intentar vencer a la inflación, y eso no se consigue dejándolo en una cuenta corriente.",
+        edad_joven: "Eres muy joven aún. El tiempo va a tu favor, por lo que intenta es ahora cuando puedes ser menos conservador. Diversifica, no tengas todo en un fondo o una acción. No olvides también invertir en tu propio futuro profesional. Igual actualizarte profesionalmente relanza tus ingresos.",
+        edad_media: "Estás en un momento personal donde debes estar en la fase de acumulación de ahorro. Todavía el tiempo va a tu favor, por lo que intenta no coger perfiles excesivamente conservadores. Diversifica, no tengas todo en un fondo o una acción.",
+        edad_mayor: "Bajo la premisa de poner siempre tu ahorro a trabajar, a partir de cierta edad se debe intentar tener un perfil menos agresivo en las inversiones. El horizonte temporal en el que normalmente se va disponer del dinero ahorrado se acerca y no es bueno que justo en el momento final se haya perdido rentabilidad porque se esté muy expuesto a la volatilidad."
+      }
+    }
+  },
+
+  // ==========================================================================
+  // 4. DEUDA (ratio de deuda sin hipoteca)
+  // ==========================================================================
+  deuda: {
+    general: "La suma de todas los préstamos no deben superar el 40% de tus ingresos.",
+    particular_prefix: "En tu caso nos indicas que destinas un",
+    particular_suffix: "de tus ingresos al pago de préstamos distintos de la hipoteca",
+    ratio_mayor_10: "Tu ratio de deuda es superior al 10% recomendado. Deberías intentar ir reduciendo tu deuda. Las compras al consumo es mejor que se afronten gracias a un ahorro previo, evitando la formalización de préstamos.",
+    ratio_menor_10_vivienda_bien: "En tu caso no tienes un ratio de deuda preocupante porque junto con tu ratio de vivienda estás dentro de los parámetros recomendados.",
+    ratio_menor_10_vivienda_mal: "No tienes un ratio de deuda al consumo preocupante, pero si se analiza conjuntamente con el ratio de vivienda, sí empieza a superar los límites recomendados."
   }
 };
 
@@ -2396,6 +2437,46 @@ function determinarTipoVivienda(userData) {
 function lePreocupaElAhorro(userData) {
   const preocupaciones = (userData.temas_preocupan || '').toLowerCase();
   return preocupaciones.includes('ahorro') || preocupaciones.includes('fin de mes') || preocupaciones.includes('final de mes');
+}
+
+function hacePreahorro(userData) {
+  const comoAhorra = (userData.como_ahorras || '').toLowerCase();
+  // Si hace transferencias periódicas o automáticas, hace pre-ahorro
+  return comoAhorra.includes('periódic') || comoAhorra.includes('automatic') || comoAhorra.includes('principio de mes') || comoAhorra.includes('transferencia');
+}
+
+function determinarTamanoFamilia(userData) {
+  const unidadFamiliar = (userData.unidad_familiar || '').toLowerCase();
+  // Si tiene más de 2 miembros (entre 3 y 5, o más de 5)
+  if (unidadFamiliar.includes('3') || unidadFamiliar.includes('4') || unidadFamiliar.includes('5') || unidadFamiliar.includes('más de')) {
+    return 'grande'; // más de 2 miembros
+  }
+  return 'pequena'; // 1 o 2 miembros
+}
+
+function determinarRangoEdad(userData) {
+  const edad = (userData.edad || '').toLowerCase();
+  // Menos de 35 años
+  if (edad.includes('menos de 35') || edad.includes('18') || edad.includes('25') || edad.includes('30')) {
+    return 'joven';
+  }
+  // Entre 35 y 55
+  if (edad.includes('35') || edad.includes('40') || edad.includes('45') || edad.includes('50') || edad.includes('entre 35')) {
+    return 'media';
+  }
+  // Más de 55 años
+  return 'mayor';
+}
+
+function tieneDeuda(userData) {
+  const deuda = (userData.porcentaje_deuda || '').toLowerCase();
+  return !deuda.includes('no tengo') && deuda !== '';
+}
+
+function ratioDeudaMayorA10(userData) {
+  const deuda = (userData.porcentaje_deuda || '').toLowerCase();
+  // Si incluye porcentajes mayores al 10%
+  return deuda.includes('más del 10') || deuda.includes('entre 10') || deuda.includes('20') || deuda.includes('30');
 }
 
 function generarBloqueColchonArbol(userData, perfil) {
@@ -2448,26 +2529,106 @@ function generarBloqueViviendaArbol(userData, perfil) {
 }
 
 function generarBloqueAhorroArbol(userData, perfil) {
-  if (!lePreocupaElAhorro(userData)) {
-    return null;
-  }
-
   const estadoAhorro = (perfil.ahorro || '').toLowerCase();
   const respuestaAhorro = userData.porcentaje_ahorro || 'No especificado';
+  const preocupaAhorro = lePreocupaElAhorro(userData);
+  const hacePre = hacePreahorro(userData);
+  const tamanoFamilia = determinarTamanoFamilia(userData);
+  const rangoEdad = determinarRangoEdad(userData);
   const bloques = [];
 
-  bloques.push(ARBOL_TEXTOS.ahorro.general);
-  bloques.push("");
-  bloques.push(`${ARBOL_TEXTOS.ahorro.particular_prefix} ${respuestaAhorro}`);
+  // Seleccionar textos según si le preocupa o no el ahorro
+  const textosAhorro = preocupaAhorro ? ARBOL_TEXTOS.ahorro.le_preocupa : ARBOL_TEXTOS.ahorro.no_le_preocupa;
+
+  // Párrafo general (solo si le preocupa, si no está vacío)
+  if (textosAhorro.general) {
+    bloques.push(textosAhorro.general);
+    bloques.push("");
+  }
+
+  // Párrafo particular con respuesta
+  bloques.push(`${textosAhorro.particular_prefix} ${respuestaAhorro} ${textosAhorro.particular_suffix}`);
   bloques.push("");
 
   const esMal = estadoAhorro.includes('mal');
   const esBienOSuperBien = estadoAhorro.includes('bien') || estadoAhorro.includes('super bien');
 
   if (esMal) {
-    bloques.push(ARBOL_TEXTOS.ahorro.mal);
+    // Ratio de ahorro MAL
+    if (!hacePre) {
+      // No hace pre-ahorro
+      bloques.push(textosAhorro.mal.no_preahorro);
+    } else {
+      // Hace pre-ahorro
+      bloques.push(textosAhorro.mal.preahorro);
+      bloques.push("");
+      // Añadir texto según tamaño de familia
+      if (tamanoFamilia === 'grande') {
+        bloques.push(textosAhorro.mal.familia_grande);
+      } else {
+        bloques.push(textosAhorro.mal.familia_pequena);
+      }
+    }
   } else if (esBienOSuperBien) {
-    bloques.push(ARBOL_TEXTOS.ahorro.bien);
+    // Ratio de ahorro BIEN
+    if (preocupaAhorro) {
+      // Le preocupa el ahorro pero lo tiene bien
+      bloques.push(textosAhorro.bien.intro);
+      bloques.push("");
+      if (!hacePre) {
+        bloques.push(textosAhorro.bien.no_preahorro);
+      } else {
+        bloques.push(textosAhorro.bien.preahorro);
+      }
+    } else {
+      // No le preocupa el ahorro y lo tiene bien
+      bloques.push(textosAhorro.bien.intro);
+      bloques.push("");
+      // Añadir texto según edad
+      if (rangoEdad === 'joven') {
+        bloques.push(textosAhorro.bien.edad_joven);
+      } else if (rangoEdad === 'media') {
+        bloques.push(textosAhorro.bien.edad_media);
+      } else {
+        bloques.push(textosAhorro.bien.edad_mayor);
+      }
+    }
+  }
+
+  return bloques.join('\n');
+}
+
+function generarBloqueDeudaArbol(userData, perfil) {
+  // Solo mostrar si tiene deuda
+  if (!tieneDeuda(userData)) {
+    return null;
+  }
+
+  const estadoVivienda = (perfil.vivienda || '').toLowerCase();
+  const respuestaDeuda = userData.porcentaje_deuda || 'No especificado';
+  const bloques = [];
+  const textosDeuda = ARBOL_TEXTOS.deuda;
+
+  // Párrafo general
+  bloques.push(textosDeuda.general);
+  bloques.push("");
+
+  // Párrafo particular con respuesta
+  bloques.push(`${textosDeuda.particular_prefix} ${respuestaDeuda} ${textosDeuda.particular_suffix}`);
+  bloques.push("");
+
+  // Determinar conclusión según ratio de deuda y vivienda
+  if (ratioDeudaMayorA10(userData)) {
+    // Ratio de deuda > 10%
+    bloques.push(textosDeuda.ratio_mayor_10);
+  } else {
+    // Ratio de deuda < 10%
+    const ratioViviendaMal = estadoVivienda.includes('mal');
+    if (ratioViviendaMal) {
+      bloques.push(textosDeuda.ratio_menor_10_vivienda_mal);
+    } else {
+      bloques.push(textosDeuda.ratio_menor_10_vivienda_bien);
+    }
   }
 
   return bloques.join('\n');
@@ -2478,17 +2639,26 @@ function generarInsightDesdeArbolDecision(userData, perfil) {
     Logger.log('🌳 Generando insight desde árbol de decisión (SIN OpenAI)...');
     const secciones = [];
 
+    // 1. Colchón
     if (perfil.colchon) {
       secciones.push(generarBloqueColchonArbol(userData, perfil));
     }
 
+    // 2. Vivienda
     if (perfil.vivienda) {
       secciones.push(generarBloqueViviendaArbol(userData, perfil));
     }
 
+    // 3. Ahorro (siempre se genera, ya sea que le preocupe o no)
     const bloqueAhorro = generarBloqueAhorroArbol(userData, perfil);
     if (bloqueAhorro) {
       secciones.push(bloqueAhorro);
+    }
+
+    // 4. Deuda (solo si tiene deuda)
+    const bloqueDeuda = generarBloqueDeudaArbol(userData, perfil);
+    if (bloqueDeuda) {
+      secciones.push(bloqueDeuda);
     }
 
     const insightFinal = secciones.join('\n\n');
