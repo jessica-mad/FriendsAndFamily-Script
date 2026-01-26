@@ -2356,7 +2356,7 @@ const ARBOL_TEXTOS = {
     hipoteca: {
       comun: "Actualmente en España el gasto más relevante es la vivienda. Y en tu caso, el gasto principal dentro de la vivienda es claramente tu cuota de hipoteca.",
       ratio_bien_ahorro_bien: "Tu ratio de vivienda es adecuado, y además está acompañado de un buen ratio de ahorro. Con estos datos podemos decir que vas por el buen camino en el control de tus finanzas.",
-      ratio_bien_ahorro_mal: "Falta texto para este caso",
+      ratio_bien_ahorro_mal: "Falta texto para este caso: hipoteca con ratio vivienda bien y ratio ahorro mal (2.3.1.2)",
       ratio_mal_ahorro_mal: "Estás gastando en la vivienda más de lo recomendado. Tus gastos en vivienda no deberían superar el 40% de tus ingresos y el de tu hipoteca debería ser del 30%. El superar estos ratios te está penalizando en tu ahorro. Tu ratio de ahorro es insuficiente y en tu caso una de las causas es el elevado gasto en tu vivienda.",
       ratio_mal_ahorro_bien: "Tienes un ratio de vivienda mayor del adecuado. Tus gastos en vivienda no deberían superar el 40% de tus ingresos y el de tu hipoteca debería ser del 30%. Como tu ratio de ahorro sí está en línea con lo recomendado solo te pedimos que mires si puedes ajustar alguno de los gastos de tu casa. Puede que algo sea optimizable en el corto plazo."
     }
@@ -2368,8 +2368,8 @@ const ARBOL_TEXTOS = {
   ahorro: {
     general: "Nos transmites que entre los temas que te preocupan más está el ahorro y/o no llegar a final de mes.",
     particular_prefix: "Ya habíamos comentado anteriormente acerca de tu ratio de ahorro. En concreto nos respondiste que tu ahorro era",
-    mal: "Falta texto para este caso",
-    bien: "Falta texto para este caso"
+    mal: "Falta texto para este caso: ahorro mal cuando le preocupa el ahorro (3.1.1)",
+    bien: "Falta texto para este caso: ahorro bien cuando le preocupa el ahorro (3.1.2)"
   }
 };
 
