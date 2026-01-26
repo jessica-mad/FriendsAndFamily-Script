@@ -638,12 +638,8 @@ function processRowInsight(sheet, rowNumber) {
       Logger.log(`ℹ️ Fila ${rowNumber}: Usando perfilado existente`);
     }
 
-    // ========== GENERAR RESPUESTAS LITERALES ==========
-    const respuestasLiterales = generarRespuestasLiterales(userData, resultadoPerfilado.perfil);
-    Logger.log(`📝 Respuestas literales generadas: ${respuestasLiterales.join(', ')}`);
-
-    // ========== GENERAR INSIGHT CON OPENAI BUSCANDO EN ÁRBOL DE DECISIÓN ==========
-    const insight = generateInsightFromArbolDecision(respuestasLiterales);
+    // ========== GENERAR INSIGHT DESDE ÁRBOL DE DECISIÓN (SIN OPENAI) ==========
+    const insight = generarInsightDesdeArbolDecision(userData, resultadoPerfilado.perfil);
 
     if (insight && insight.length > 10) {
       insightCell.setValue(insight);
@@ -856,12 +852,8 @@ function onFormSubmit(e) {
       Logger.log('ℹ️ Usando perfilado existente');
     }
 
-    // ========== GENERAR RESPUESTAS LITERALES ==========
-    const respuestasLiterales = generarRespuestasLiterales(userData, resultadoPerfilado.perfil);
-    Logger.log('📝 Respuestas literales generadas: ' + respuestasLiterales.join(', '));
-
-    // ========== GENERAR INSIGHT CON OPENAI BUSCANDO EN ÁRBOL DE DECISIÓN ==========
-    const insight = generateInsightFromArbolDecision(respuestasLiterales);
+    // ========== GENERAR INSIGHT DESDE ÁRBOL DE DECISIÓN (SIN OPENAI) ==========
+    const insight = generarInsightDesdeArbolDecision(userData, resultadoPerfilado.perfil);
     insightCell.setValue(insight);
 
     const email = rowData[CONFIG.COLUMNS.EMAIL];
@@ -2261,12 +2253,8 @@ function testScript() {
   const resultadoPerfilado = generarPerfilado(userData);
   Logger.log('Perfil: ' + resultadoPerfilado.resumen);
 
-  Logger.log('\n=== RESPUESTAS LITERALES ===');
-  const respuestasLiterales = generarRespuestasLiterales(userData, resultadoPerfilado.perfil);
-  Logger.log('Respuestas: ' + respuestasLiterales.join(', '));
-
-  Logger.log('\n=== GENERANDO INSIGHT DESDE ÁRBOL DE DECISIÓN ===');
-  const insight = generateInsightFromArbolDecision(respuestasLiterales);
+  Logger.log('\n=== GENERANDO INSIGHT DESDE ÁRBOL DE DECISIÓN (SIN OPENAI) ===');
+  const insight = generarInsightDesdeArbolDecision(userData, resultadoPerfilado.perfil);
   Logger.log('\n=== INSIGHT GENERADO ===');
   Logger.log(insight);
 
@@ -2322,5 +2310,214 @@ function testMailchimpConnection() {
     
   } catch (error) {
     SpreadsheetApp.getUi().alert('❌ Error: ' + error.toString());
+  }
+}
+
+// ============================================================================
+// ÁRBOL DE DECISIÓN DE TEXTOS - Sistema Optimizado
+// ============================================================================
+
+const ARBOL_TEXTOS = {
+
+  // ==========================================================================
+  // 1. COLCHÓN DE EMERGENCIA (Autónomo vs Cuenta Ajena)
+  // ==========================================================================
+  colchon: {
+    autonomo: {
+      comun: "Como autónomo tus ingresos mensuales son irregulares. Por ello se recomienda tener un colchón de emergencia superior a 9 meses de tus ingresos, e idealmente 12. Recuerda que basta tener 3 meses de ingresos en la cuenta corriente y el resto del colchón mejor tenerlo en un producto remunerado y líquido.",
+      mal: "El colchón emergencia es fundamental para tu estabilidad económica. Es el primer objetivo que te tienes que marcar en tu ahorro. Cuando lo tengas cubierto tal y como te hemos indicado habrás logrado un gran paso.",
+      bien: "El colchón emergencia es fundamental para tu estabilidad económica. Es el primer objetivo que te tienes que marcar en tu ahorro. Ahora mismo lo tienes bien controlado. Sigue cuidándolo. Cuando tengas un gasto para una emergencia tira de él."
+    },
+    cuenta_ajena: {
+      comun: "Como norma general se recomienda tener un colchón de emergencia superior a 6 meses de tus ingresos. Recuerda que basta tener 3 meses de ingresos en la cuenta corriente y el resto del colchón mejor tenerlo en un producto remunerado y líquido.",
+      mal: "El colchón emergencia es fundamental para tu estabilidad económica. Es el primer objetivo que te tienes que marcar en tu ahorro. Cuando lo tengas cubierto tal y como te hemos indicado habrás logrado un gran paso.",
+      bien: "El colchón emergencia es fundamental para tu estabilidad económica. Es el primer objetivo que te tienes que marcar en tu ahorro. Ahora mismo lo tienes bien controlado. Sigue cuidándolo. Cuando tengas un gasto para una emergencia tira de él."
+    }
+  },
+
+  // ==========================================================================
+  // 2. VIVIENDA (Alquiler / Casa Pagada / Hipoteca)
+  // ==========================================================================
+  vivienda: {
+    alquiler: {
+      comun: "Actualmente en España el gasto más relevante es la vivienda. En tu caso, que te encuentras en régimen de alquiler. Por estar en alquiler deberías tener un ratio de vivienda más bajo y un ratio de ahorro mayor que aquel que está pagando una hipoteca.",
+      ratio_bien_ahorro_bien: "Tu ratio de vivienda es adecuado, y además está acompañado de un buen ratio de ahorro. Con estos datos podemos decir que vas en la buena dirección para generar el suficiente ahorro para la compra de una vivienda.",
+      ratio_bien_ahorro_mal: "Tu ratio de vivienda es adecuado, pero sin embargo tienes un ratio de ahorro corto para el que deberías tener al estar en alquiler.",
+      ratio_mal_ahorro_mal: "Estás gastando en la vivienda más de lo recomendado y además no estás ahorrando como debes, ya que al estar de alquiler deberías tener un ratio de ahorro superior a los que pagan una hipoteca. En el alquiler te debes gastar como máximo un 25% de tus ingresos y en el total de tu vivienda no puedes superar el 30%. Como los gastos de alquiler en el corto plazo son más complicados de ajustar, intenta mejorar el ratio de ahorro reduciendo los gastos discrecionales de tu día a día, es decir, aquellos que no son completamente necesarios.",
+      ratio_mal_ahorro_bien: "Tienes un ratio de vivienda mayor del adecuado. En el alquiler te debes gastar como máximo un 25% de tus ingresos y en el total de tu vivienda no puedes superar el 30%. Como tu ratio de ahorro sí está en línea con lo recomendado solo te pedimos que mires si puedes ajustar alguno de los gastos de tu casa. Puede que algo sea optimizable en el corto plazo"
+    },
+    pagada: {
+      comun: "Actualmente en España el gasto más relevante es la vivienda. En tu caso no se puede tener mejores noticias. Esa reducción de gasto mensual al no tener que pagar ni hipoteca o alquiler debe ayudarte enormemente de aquí en adelante",
+      ratio_bien_ahorro_bien: "Tu ratio de vivienda es adecuado, y además está acompañado de un buen ratio de ahorro. Con estos datos podemos decir que tienes una base excepcional para tu futuro.",
+      ratio_bien_ahorro_mal: "Tu ratio de vivienda es adecuado, pero sin embargo tienes un ratio de ahorro corto para el que deberías conseguir al tener ya tu casa pagada. Es normal que con la casa pagada puedan aumentar otro tipo de gastos, pero en la medida de lo posible hay que ser exigente con el ratio de ahorro al estar en una situación mucho más favorable que los que tiene que pagar una hipoteca",
+      ratio_mal_ahorro_mal: "Estás gastando en la vivienda más de lo recomendado y además no estás ahorrando como debes, ya que al tener ya la casa pagada deberías tener un ratio de ahorro superior a los que pagan una hipoteca. Intenta optimizar algunos gastos de la vivienda y reducir ciertos gastos discrecionales de tu día a día. Hay que intentar que el dinero que iría a una hipoteca se vaya casi al 100% al ahorro.",
+      ratio_mal_ahorro_bien: "Tienes un ratio de vivienda mayor del adecuado. Como tu ratio de ahorro sí está en línea con lo recomendado solo te pedimos que mires si puedes ajustar alguno de los gastos de tu casa. Puede que algo sea optimizable en el corto plazo"
+    },
+    hipoteca: {
+      comun: "Actualmente en España el gasto más relevante es la vivienda. Y en tu caso, el gasto principal dentro de la vivienda es claramente tu cuota de hipoteca.",
+      ratio_bien_ahorro_bien: "Tu ratio de vivienda es adecuado, y además está acompañado de un buen ratio de ahorro. Con estos datos podemos decir que vas por el buen camino en el control de tus finanzas.",
+      ratio_bien_ahorro_mal: "Falta texto para este caso",
+      ratio_mal_ahorro_mal: "Estás gastando en la vivienda más de lo recomendado. Tus gastos en vivienda no deberían superar el 40% de tus ingresos y el de tu hipoteca debería ser del 30%. El superar estos ratios te está penalizando en tu ahorro. Tu ratio de ahorro es insuficiente y en tu caso una de las causas es el elevado gasto en tu vivienda.",
+      ratio_mal_ahorro_bien: "Tienes un ratio de vivienda mayor del adecuado. Tus gastos en vivienda no deberían superar el 40% de tus ingresos y el de tu hipoteca debería ser del 30%. Como tu ratio de ahorro sí está en línea con lo recomendado solo te pedimos que mires si puedes ajustar alguno de los gastos de tu casa. Puede que algo sea optimizable en el corto plazo."
+    }
+  },
+
+  // ==========================================================================
+  // 3. AHORRO (cuando le preocupa)
+  // ==========================================================================
+  ahorro: {
+    general: "Nos transmites que entre los temas que te preocupan más está el ahorro y/o no llegar a final de mes.",
+    particular_prefix: "Ya habíamos comentado anteriormente acerca de tu ratio de ahorro. En concreto nos respondiste que tu ahorro era",
+    mal: "Falta texto para este caso",
+    bien: "Falta texto para este caso"
+  }
+};
+
+function determinarSituacionLaboralParaColchon(userData) {
+  const situacion = (userData.situacion_laboral || '').toLowerCase();
+  if (situacion.includes('cuenta propia') || situacion.includes('autónomo')) {
+    return 'autonomo';
+  }
+  return 'cuenta_ajena';
+}
+
+function determinarTipoVivienda(userData) {
+  const vivienda = (userData.vivienda_principal || '').toLowerCase();
+  if (vivienda.includes('alquiler')) {
+    return 'alquiler';
+  } else if (vivienda.includes('pagad')) {
+    return 'pagada';
+  } else if (vivienda.includes('hipoteca')) {
+    return 'hipoteca';
+  }
+  return 'hipoteca';
+}
+
+function lePreocupaElAhorro(userData) {
+  const preocupaciones = (userData.temas_preocupan || '').toLowerCase();
+  return preocupaciones.includes('ahorro') || preocupaciones.includes('fin de mes') || preocupaciones.includes('final de mes');
+}
+
+function generarBloqueColchonArbol(userData, perfil) {
+  const situacion = determinarSituacionLaboralParaColchon(userData);
+  const estadoColchon = (perfil.colchon || '').toLowerCase();
+  const respuestaUsuario = userData.colchon_liquido || 'No especificado';
+  const bloques = [];
+
+  bloques.push("Ver la respuesta de la pregunta 3.");
+  bloques.push("Solo va a tener impacto en lo relativo al colchón de emergencia. Pregunta 22.");
+  bloques.push("");
+  bloques.push(ARBOL_TEXTOS.colchon[situacion].comun);
+  bloques.push("");
+  bloques.push(`Respondiste: ${respuestaUsuario}`);
+  bloques.push("");
+
+  const esMal = estadoColchon.includes('mal');
+  const esBienOSuperBien = estadoColchon.includes('bien') || estadoColchon.includes('super bien');
+
+  if (esMal) {
+    bloques.push(ARBOL_TEXTOS.colchon[situacion].mal);
+  } else if (esBienOSuperBien) {
+    bloques.push(ARBOL_TEXTOS.colchon[situacion].bien);
+  }
+
+  return bloques.join('\n');
+}
+
+function generarBloqueViviendaArbol(userData, perfil) {
+  const tipoVivienda = determinarTipoVivienda(userData);
+  const estadoVivienda = (perfil.vivienda || '').toLowerCase();
+  const estadoAhorro = (perfil.ahorro || '').toLowerCase();
+  const gastoVivienda = userData.gasto_vivienda || 'No especificado';
+  const bloques = [];
+  const bloquesVivienda = ARBOL_TEXTOS.vivienda[tipoVivienda];
+
+  bloques.push(bloquesVivienda.comun);
+  bloques.push("");
+  bloques.push(`En concreto destinas un ${gastoVivienda} de tus ingresos al pago de tu vivienda.`);
+  bloques.push("");
+
+  const ratioViviendaBien = estadoVivienda.includes('bien') || estadoVivienda.includes('super bien');
+  const ratioAhorroBien = estadoAhorro.includes('bien') || estadoAhorro.includes('super bien');
+
+  if (ratioViviendaBien && ratioAhorroBien) {
+    bloques.push(bloquesVivienda.ratio_bien_ahorro_bien);
+  } else if (ratioViviendaBien && !ratioAhorroBien) {
+    bloques.push(bloquesVivienda.ratio_bien_ahorro_mal);
+  } else if (!ratioViviendaBien && ratioAhorroBien) {
+    bloques.push(bloquesVivienda.ratio_mal_ahorro_bien);
+  } else {
+    bloques.push(bloquesVivienda.ratio_mal_ahorro_mal);
+  }
+
+  return bloques.join('\n');
+}
+
+function generarBloqueAhorroArbol(userData, perfil) {
+  if (!lePreocupaElAhorro(userData)) {
+    return null;
+  }
+
+  const estadoAhorro = (perfil.ahorro || '').toLowerCase();
+  const respuestaAhorro = userData.porcentaje_ahorro || 'No especificado';
+  const bloques = [];
+
+  bloques.push(ARBOL_TEXTOS.ahorro.general);
+  bloques.push("");
+  bloques.push(`${ARBOL_TEXTOS.ahorro.particular_prefix} ${respuestaAhorro}`);
+  bloques.push("");
+
+  const esMal = estadoAhorro.includes('mal');
+  const esBienOSuperBien = estadoAhorro.includes('bien') || estadoAhorro.includes('super bien');
+
+  if (esMal) {
+    bloques.push(ARBOL_TEXTOS.ahorro.mal);
+  } else if (esBienOSuperBien) {
+    bloques.push(ARBOL_TEXTOS.ahorro.bien);
+  }
+
+  return bloques.join('\n');
+}
+
+function generarInsightDesdeArbolDecision(userData, perfil) {
+  try {
+    Logger.log('🌳 Generando insight desde árbol de decisión (SIN OpenAI)...');
+    const secciones = [];
+
+    if (perfil.colchon) {
+      secciones.push("# 1. AUTÓNOMO/CUENTA AJENA");
+      secciones.push("");
+      secciones.push(generarBloqueColchonArbol(userData, perfil));
+      secciones.push("");
+      secciones.push("---");
+      secciones.push("");
+    }
+
+    if (perfil.vivienda) {
+      secciones.push("# 2. ALQUILER/HIPOTECA/CASA PAGADA");
+      secciones.push("");
+      secciones.push(generarBloqueViviendaArbol(userData, perfil));
+      secciones.push("");
+      secciones.push("---");
+      secciones.push("");
+    }
+
+    const bloqueAhorro = generarBloqueAhorroArbol(userData, perfil);
+    if (bloqueAhorro) {
+      secciones.push("# 3. AHORRO");
+      secciones.push("");
+      secciones.push(bloqueAhorro);
+    }
+
+    const insightFinal = secciones.join('\n');
+    Logger.log('✅ Insight generado desde árbol de decisión');
+    Logger.log('📊 Tokens ahorrados: ~3500 tokens (100% de ahorro)');
+    Logger.log(`📝 Longitud del insight: ${insightFinal.length} caracteres`);
+
+    return insightFinal;
+
+  } catch (error) {
+    Logger.log('❌ Error generando insight desde árbol: ' + error.toString());
+    return 'Error al generar insight. Revisa los logs para más detalles.';
   }
 }
