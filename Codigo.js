@@ -2440,7 +2440,8 @@ const ARBOL_TEXTOS = {
     general: "La suma de todas los préstamos no deben superar el 40% de tus ingresos.",
     particular_prefix: "En tu caso nos indicas que destinas un",
     particular_suffix: "de tus ingresos al pago de préstamos distintos de la hipoteca",
-    ratio_mayor_10: "Tu ratio de deuda es superior al 10% recomendado. Deberías intentar ir reduciendo tu deuda. Las compras al consumo es mejor que se afronten gracias a un ahorro previo, evitando la formalización de préstamos.",
+    ratio_mayor_10_hipoteca_o_alquiler: "Tu ratio de deuda es superior al 10% recomendado. Deberías intentar ir reduciendo tu deuda. Las compras al consumo es mejor que se afronten gracias a un ahorro previo, evitando la formalización de préstamos.",
+    ratio_mayor_10_casa_pagada: "Aunque tu ratio de deuda es superior al recomendado, en tu caso, que tienes la casa ya pagada, te afecta menos. Vigila este asunto. Las compras al consumo es mejor que se afronten gracias a un ahorro previo, evitando la formalización de préstamos.",
     ratio_menor_10_vivienda_bien: "En tu caso no tienes un ratio de deuda preocupante porque junto con tu ratio de vivienda estás dentro de los parámetros recomendados.",
     ratio_menor_10_vivienda_mal: "No tienes un ratio de deuda al consumo preocupante, pero si se analiza conjuntamente con el ratio de vivienda, sí empieza a superar los límites recomendados."
   }
@@ -2650,9 +2651,15 @@ function generarBloqueDeudaArbol(userData, perfil) {
   bloques.push("");
 
   // Determinar conclusión según ratio de deuda y vivienda
+  const tipoVivienda = determinarTipoVivienda(userData);
+
   if (ratioDeudaMayorA10(userData)) {
     // Ratio de deuda > 10%
-    bloques.push(textosDeuda.ratio_mayor_10);
+    if (tipoVivienda === 'pagada') {
+      bloques.push(textosDeuda.ratio_mayor_10_casa_pagada);
+    } else {
+      bloques.push(textosDeuda.ratio_mayor_10_hipoteca_o_alquiler);
+    }
   } else {
     // Ratio de deuda < 10%
     const ratioViviendaMal = estadoVivienda.includes('mal');
