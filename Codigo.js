@@ -2537,7 +2537,7 @@ const ARBOL_TEXTOS = {
 };
 
 function determinarSituacionLaboralParaColchon(userData) {
-  const situacion = (userData.situacion_laboral || '').toLowerCase();
+  const situacion = String(userData.situacion_laboral || '').toLowerCase();
   if (situacion.includes('cuenta propia') || situacion.includes('autónomo')) {
     return 'autonomo';
   }
@@ -2548,12 +2548,12 @@ function determinarSituacionLaboralParaColchon(userData) {
 }
 
 function esUnidadFamiliar(userData) {
-  const gastosPara = (userData.gastos_para || '').toLowerCase();
+  const gastosPara = String(userData.gastos_para || '').toLowerCase();
   return gastosPara.includes('unidad familiar') || gastosPara.includes('todos');
 }
 
 function determinarTipoVivienda(userData) {
-  const vivienda = (userData.vivienda_principal || '').toLowerCase();
+  const vivienda = String(userData.vivienda_principal || '').toLowerCase();
   if (vivienda.includes('alquiler')) {
     return 'alquiler';
   } else if (vivienda.includes('pagad')) {
@@ -2565,12 +2565,12 @@ function determinarTipoVivienda(userData) {
 }
 
 function lePreocupaElAhorro(userData) {
-  const preocupaciones = (userData.temas_preocupan || '').toLowerCase();
+  const preocupaciones = String(userData.temas_preocupan || '').toLowerCase();
   return preocupaciones.includes('ahorro') || preocupaciones.includes('fin de mes') || preocupaciones.includes('final de mes');
 }
 
 function hacePreahorro(userData) {
-  const comoAhorra = (userData.como_ahorras || '').toLowerCase();
+  const comoAhorra = String(userData.como_ahorras || '').toLowerCase();
   // Si hace transferencias periódicas o automáticas, hace pre-ahorro
   return comoAhorra.includes('periódic') || comoAhorra.includes('automatic') || comoAhorra.includes('principio de mes') || comoAhorra.includes('transferencia');
 }
@@ -2601,12 +2601,12 @@ function determinarRangoEdad(userData) {
 }
 
 function tieneDeuda(userData) {
-  const deuda = (userData.porcentaje_deuda || '').toLowerCase();
+  const deuda = String(userData.porcentaje_deuda || '').toLowerCase();
   return !deuda.includes('no tengo') && deuda !== '';
 }
 
 function ratioDeudaMayorA10(userData) {
-  const deuda = (userData.porcentaje_deuda || '').toLowerCase();
+  const deuda = String(userData.porcentaje_deuda || '').toLowerCase();
   // Si incluye porcentajes mayores al 10%
   return deuda.includes('más del 10') || deuda.includes('entre 10') || deuda.includes('20') || deuda.includes('30');
 }
