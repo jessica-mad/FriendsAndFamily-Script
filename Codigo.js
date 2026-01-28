@@ -1028,6 +1028,11 @@ function generarPerfilado(userData) {
   const porcentajeAhorro = userData.porcentaje_ahorro || '';
   const gastoVivienda = userData.gasto_vivienda || '';
 
+  // LOG para diagnóstico
+  Logger.log(`📍 VIVIENDA PRINCIPAL (P23): "${viviendaPrincipal}"`);
+  Logger.log(`📍 PORCENTAJE AHORRO (P21): "${porcentajeAhorro}"`);
+  Logger.log(`📍 GASTO VIVIENDA (P24): "${gastoVivienda}"`);
+
   if (viviendaPrincipal.includes('hipoteca')) {
     // ===== HIPOTECA =====
     // Evaluar ahorro
