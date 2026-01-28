@@ -2352,18 +2352,24 @@ function testMailchimpConnection() {
 const ARBOL_TEXTOS = {
 
   // ==========================================================================
-  // 1. COLCHÓN DE EMERGENCIA (Autónomo vs Cuenta Ajena)
+  // 1. COLCHÓN DE EMERGENCIA (Autónomo / Cuenta Ajena / Sin Trabajo)
   // ==========================================================================
   colchon: {
     autonomo: {
       comun: "Como autónomo tus ingresos mensuales son irregulares. Por ello se recomienda tener un colchón de emergencia superior a 9 meses de tus ingresos, e idealmente 12. Recuerda que basta tener 3 meses de ingresos en la cuenta corriente y el resto del colchón mejor tenerlo en un producto remunerado y líquido.",
-      mal: "El colchón emergencia es fundamental para tu estabilidad económica. Es el primer objetivo que te tienes que marcar en tu ahorro. Cuando lo tengas cubierto tal y como te hemos indicado habrás logrado un gran paso.",
-      bien: "El colchón emergencia es fundamental para tu estabilidad económica. Es el primer objetivo que te tienes que marcar en tu ahorro. Ahora mismo lo tienes bien controlado. Sigue cuidándolo. Cuando tengas un gasto para una emergencia tira de él."
+      mal: "El colchón de emergencia es fundamental para tu estabilidad económica. Es el primer objetivo que te tienes que marcar en tu ahorro. Cuando lo tengas cubierto tal y como te hemos indicado habrás logrado un gran paso.",
+      bien: "El colchón de emergencia es fundamental para tu estabilidad económica. Es el primer objetivo que te tienes que marcar en tu ahorro. Ahora mismo lo tienes bien controlado. Sigue cuidándolo. Cuando tengas un gasto imprevisto, tira de él."
     },
     cuenta_ajena: {
       comun: "Como norma general se recomienda tener un colchón de emergencia superior a 6 meses de tus ingresos. Recuerda que basta tener 3 meses de ingresos en la cuenta corriente y el resto del colchón mejor tenerlo en un producto remunerado y líquido.",
-      mal: "El colchón emergencia es fundamental para tu estabilidad económica. Es el primer objetivo que te tienes que marcar en tu ahorro. Cuando lo tengas cubierto tal y como te hemos indicado habrás logrado un gran paso.",
-      bien: "El colchón emergencia es fundamental para tu estabilidad económica. Es el primer objetivo que te tienes que marcar en tu ahorro. Ahora mismo lo tienes bien controlado. Sigue cuidándolo. Cuando tengas un gasto para una emergencia tira de él."
+      mal: "El colchón de emergencia es fundamental para tu estabilidad económica. Es el primer objetivo que te tienes que marcar en tu ahorro. Cuando lo tengas cubierto tal y como te hemos indicado habrás logrado un gran paso.",
+      bien: "El colchón de emergencia es fundamental para tu estabilidad económica. Es el primer objetivo que te tienes que marcar en tu ahorro. Ahora mismo lo tienes bien controlado. Sigue cuidándolo. Cuando tengas un gasto imprevisto, tira de él."
+    },
+    sin_trabajo_propio: {
+      comun_prefix: "En tu situación actual, y analizando solo tus números, el colchón de emergencia toma un carácter fundamental. Tu colchón de emergencia es",
+      mal: "Se queda por debajo de los 6 meses que son deseables. Sabemos que es complicado ahorrar cuando no se tiene trabajo, pero hay que intentar bajar los gastos discrecionales de tu día a día. Debes mejorar tu colchón de emergencia y tu ratio de ahorro. Y ahora toca apretarse el cinturón y mejorar el ahorro. De manera simultánea debes mejorar tu capacidad de reacción, así que intenta revisar a la baja todos los gastos que pueden ser optimizables, como la luz, el teléfono o los seguros.",
+      bien_prefix: "Tu colchón de emergencia es adecuado. La manera de hacerlo más largo aún es mejorando tu capacidad de reacción. Nos indicas que los gastos que te puedes quitar en caso de emergencia son",
+      bien_suffix: "de tus ingresos. Mejorando este porcentaje estirarás la duración de tu colchón de emergencia y te hará más resiliente."
     }
   },
 
@@ -2372,24 +2378,24 @@ const ARBOL_TEXTOS = {
   // ==========================================================================
   vivienda: {
     alquiler: {
-      comun: "Actualmente en España el gasto más relevante es la vivienda. En tu caso, que te encuentras en régimen de alquiler. Por estar en alquiler deberías tener un ratio de vivienda más bajo y un ratio de ahorro mayor que aquel que está pagando una hipoteca.",
-      ratio_bien_ahorro_bien: "Tu ratio de vivienda es adecuado, y además está acompañado de un buen ratio de ahorro. Con estos datos podemos decir que vas en la buena dirección para generar el suficiente ahorro para la compra de una vivienda.",
-      ratio_bien_ahorro_mal: "Tu ratio de vivienda es adecuado, pero sin embargo tienes un ratio de ahorro corto para el que deberías tener al estar en alquiler.",
-      ratio_mal_ahorro_mal: "Estás gastando en la vivienda más de lo recomendado y además no estás ahorrando como debes, ya que al estar de alquiler deberías tener un ratio de ahorro superior a los que pagan una hipoteca. En el alquiler te debes gastar como máximo un 25% de tus ingresos y en el total de tu vivienda no puedes superar el 30%. Como los gastos de alquiler en el corto plazo son más complicados de ajustar, intenta mejorar el ratio de ahorro reduciendo los gastos discrecionales de tu día a día, es decir, aquellos que no son completamente necesarios.",
+      comun: "Actualmente en España el gasto más relevante es la vivienda. En tu caso, que te encuentras en régimen de alquiler, deberías tener tanto un ratio de vivienda más bajo como un ratio de ahorro mayor que los que tiene alguien que está pagando una hipoteca.",
+      ratio_bien_ahorro_bien: "Tu ratio de vivienda es adecuado, y además está acompañado de un buen ratio de ahorro. Con estos datos podemos decir que vas en la buena dirección para generar el suficiente ahorro que se necesita tener antes de la compra de una vivienda.",
+      ratio_bien_ahorro_mal: "Tu ratio de vivienda es adecuado, pero como ya te hemos comentado, tu ratio de ahorro es corto. Deberías ahorrar más al estar en alquiler.",
+      ratio_mal_ahorro_mal: "Estás gastando en la vivienda más de lo recomendado y además, como te hemos mencionado anteriormente, no estás ahorrando como debes. Al estar de alquiler se te \"exige\" un ratio de ahorro superior. En el alquiler te debes gastar como máximo un 25% de tus ingresos y en el total de tu vivienda no puedes superar el 30%. Como los gastos de alquiler en el corto plazo son más complicados de ajustar, intenta mejorar el ratio de ahorro reduciendo los gastos discrecionales de tu día a día, es decir, aquellos que no son completamente necesarios.",
       ratio_mal_ahorro_bien: "Tienes un ratio de vivienda mayor del adecuado. En el alquiler te debes gastar como máximo un 25% de tus ingresos y en el total de tu vivienda no puedes superar el 30%. Como tu ratio de ahorro sí está en línea con lo recomendado solo te pedimos que mires si puedes ajustar alguno de los gastos de tu casa. Puede que algo sea optimizable en el corto plazo"
     },
     pagada: {
-      comun: "Actualmente en España el gasto más relevante es la vivienda. En tu caso no se puede tener mejores noticias. Esa reducción de gasto mensual al no tener que pagar ni hipoteca o alquiler debe ayudarte enormemente de aquí en adelante",
-      ratio_bien_ahorro_bien: "Tu ratio de vivienda es adecuado, y además está acompañado de un buen ratio de ahorro. Con estos datos podemos decir que tienes una base excepcional para tu futuro.",
-      ratio_bien_ahorro_mal: "Tu ratio de vivienda es adecuado, pero sin embargo tienes un ratio de ahorro corto para el que deberías conseguir al tener ya tu casa pagada. Es normal que con la casa pagada puedan aumentar otro tipo de gastos, pero en la medida de lo posible hay que ser exigente con el ratio de ahorro al estar en una situación mucho más favorable que los que tiene que pagar una hipoteca",
+      comun: "Actualmente en España el gasto más relevante es la vivienda. En tu caso, al tener ya pagada tu casa, estás en teoría en una situación muy favorable. No pagas ni alquiler, ni hipoteca, y eso debe ayudarte enormemente de aquí en adelante",
+      ratio_bien_ahorro_bien: "Tu ratio de vivienda es adecuado, y además como te hemos comentado está acompañado de un buen ratio de ahorro. Estás correctamente destinando tus menores gastos en aumentar tu ahorro. Con estos datos podemos decir que tienes una base excepcional para tu futuro.",
+      ratio_bien_ahorro_mal: "Tu ratio de vivienda es adecuado, pero sin embargo, como te hemos comentado, tienes un ratio de ahorro corto para el que deberías conseguir al tener ya tu casa pagada. Es normal que con la casa pagada puedan aumentar otro tipo de gastos, pero en la medida de lo posible hay que ser exigente con el ratio de ahorro al estar en una situación mucho más favorable que los que tiene que pagar una hipoteca",
       ratio_mal_ahorro_mal: "Estás gastando en la vivienda más de lo recomendado y además no estás ahorrando como debes, ya que al tener ya la casa pagada deberías tener un ratio de ahorro superior a los que pagan una hipoteca. Intenta optimizar algunos gastos de la vivienda y reducir ciertos gastos discrecionales de tu día a día. Hay que intentar que el dinero que iría a una hipoteca se vaya casi al 100% al ahorro.",
       ratio_mal_ahorro_bien: "Tienes un ratio de vivienda mayor del adecuado. Como tu ratio de ahorro sí está en línea con lo recomendado solo te pedimos que mires si puedes ajustar alguno de los gastos de tu casa. Puede que algo sea optimizable en el corto plazo"
     },
     hipoteca: {
       comun: "Actualmente en España el gasto más relevante es la vivienda. Y en tu caso, el gasto principal dentro de la vivienda es claramente tu cuota de hipoteca.",
-      ratio_bien_ahorro_bien: "Tu ratio de vivienda es adecuado, y además está acompañado de un buen ratio de ahorro. Con estos datos podemos decir que vas por el buen camino en el control de tus finanzas.",
-      ratio_bien_ahorro_mal: "Falta texto para este caso: hipoteca con ratio vivienda bien y ratio ahorro mal (2.3.1.2)",
-      ratio_mal_ahorro_mal: "Estás gastando en la vivienda más de lo recomendado. Tus gastos en vivienda no deberían superar el 40% de tus ingresos y el de tu hipoteca debería ser del 30%. El superar estos ratios te está penalizando en tu ahorro. Tu ratio de ahorro es insuficiente y en tu caso una de las causas es el elevado gasto en tu vivienda.",
+      ratio_bien_ahorro_bien: "Tu ratio de vivienda es correcto, y además está acompañado de un buen ratio de ahorro. Con estos datos podemos decir que vas por el buen camino en el control de tus finanzas.",
+      ratio_bien_ahorro_mal: "Falta texto para este caso: hipoteca con ratio vivienda bien y ratio ahorro mal (3.3.1.2)",
+      ratio_mal_ahorro_mal: "Estás gastando en la vivienda más de lo recomendado. Tus gastos en vivienda no deberían superar el 40% de tus ingresos y el de tu hipoteca debería ser del 30%. El superar estos ratios te está penalizando en tu ahorro. Ya te habíamos comentado que tu ratio de ahorro es insuficiente y creemos que una de las causas de ese ahorro insuficiente puede ser el elevado gasto en tu vivienda.",
       ratio_mal_ahorro_bien: "Tienes un ratio de vivienda mayor del adecuado. Tus gastos en vivienda no deberían superar el 40% de tus ingresos y el de tu hipoteca debería ser del 30%. Como tu ratio de ahorro sí está en línea con lo recomendado solo te pedimos que mires si puedes ajustar alguno de los gastos de tu casa. Puede que algo sea optimizable en el corto plazo."
     }
   },
@@ -2400,7 +2406,7 @@ const ARBOL_TEXTOS = {
   ahorro: {
     le_preocupa: {
       general: "Nos transmites que entre los temas que te preocupan más está el ahorro y/o no llegar a final de mes.",
-      particular_prefix: "Ya habíamos comentado anteriormente acerca de tu ratio de ahorro. En concreto nos respondiste que tu ahorro era",
+      particular_prefix: "Además nos respondiste que tu ahorro era",
       particular_suffix: "respecto a tus ingresos",
       mal: {
         no_preahorro: "El ratio de ahorro que tienes es mejorable. Te animamos a realizar transferencias periódicas nada más recibir tus ingresos. Es un muy buen hábito para generar ahorro, ya que te ayuda a no caer en gastos no necesarios al quitar el dinero de circulación. Seguro que empezando por aquí lograrás que el ahorro sea una preocupación menor.",
@@ -2416,7 +2422,7 @@ const ARBOL_TEXTOS = {
     },
     no_le_preocupa: {
       general: "",
-      particular_prefix: "Ya habíamos comentado anteriormente acerca de tu ratio de ahorro. En concreto nos respondiste que tu ahorro era",
+      particular_prefix: "Sobre tu ratio de ahorro nos respondiste que tu ahorro era",
       particular_suffix: "respecto a tus ingresos",
       mal: {
         no_preahorro: "El ratio de ahorro que tienes es mejorable. Te animamos a realizar transferencias periódicas nada más recibir tus ingresos. Es un muy buen hábito para generar ahorro, ya que te ayuda a no caer en gastos no necesarios al quitar el dinero de circulación.",
@@ -2426,7 +2432,7 @@ const ARBOL_TEXTOS = {
       },
       bien: {
         intro: "Tu ratio de ahorro no está mal. Sigue así. Pon tu ahorro a trabajar. Busca invertirlo en productos que generen interés compuesto. Hay que hacer trabajar el dinero por ti. Tu dinero tiene que intentar vencer a la inflación, y eso no se consigue dejándolo en una cuenta corriente.",
-        edad_joven: "Eres muy joven aún. El tiempo va a tu favor, por lo que intenta es ahora cuando puedes ser menos conservador. Diversifica, no tengas todo en un fondo o una acción. No olvides también invertir en tu propio futuro profesional. Igual actualizarte profesionalmente relanza tus ingresos.",
+        edad_joven: "Eres muy joven aún. El tiempo va a tu favor, por lo que intenta que tu ahorro sea invertido con un perfil no muy conservador. Diversifica, no tengas todo en un fondo o una acción. No olvides también invertir en tu propio futuro profesional. Igual actualizarte profesionalmente y formarte relanzan tus ingresos.",
         edad_media: "Estás en un momento personal donde debes estar en la fase de acumulación de ahorro. Todavía el tiempo va a tu favor, por lo que intenta no coger perfiles excesivamente conservadores. Diversifica, no tengas todo en un fondo o una acción.",
         edad_mayor: "Bajo la premisa de poner siempre tu ahorro a trabajar, a partir de cierta edad se debe intentar tener un perfil menos agresivo en las inversiones. El horizonte temporal en el que normalmente se va disponer del dinero ahorrado se acerca y no es bueno que justo en el momento final se haya perdido rentabilidad porque se esté muy expuesto a la volatilidad."
       }
@@ -2437,10 +2443,11 @@ const ARBOL_TEXTOS = {
   // 4. DEUDA (ratio de deuda sin hipoteca)
   // ==========================================================================
   deuda: {
-    general: "La suma de todas los préstamos no deben superar el 40% de tus ingresos.",
-    particular_prefix: "En tu caso nos indicas que destinas un",
+    general: "La suma de todas los préstamos no debe superar el 40% de tus ingresos.",
+    particular_prefix: "En tu caso nos indicas que destinas",
     particular_suffix: "de tus ingresos al pago de préstamos distintos de la hipoteca",
-    ratio_mayor_10: "Tu ratio de deuda es superior al 10% recomendado. Deberías intentar ir reduciendo tu deuda. Las compras al consumo es mejor que se afronten gracias a un ahorro previo, evitando la formalización de préstamos.",
+    ratio_mayor_10_hipoteca_o_alquiler: "Tu ratio de deuda es superior al 10% recomendado. Deberías intentar ir reduciendo tu deuda. Las compras al consumo es mejor que se afronten gracias a un ahorro previo, evitando la formalización de préstamos.",
+    ratio_mayor_10_casa_pagada: "Aunque tu ratio de deuda es superior al recomendado, en tu caso, que tienes la casa ya pagada, te afecta menos. Vigila este asunto de la deuda al consumo. Las compras, aunque sean altas, es mejor que se afronten gracias a un ahorro previo, evitando la formalización de préstamos.",
     ratio_menor_10_vivienda_bien: "En tu caso no tienes un ratio de deuda preocupante porque junto con tu ratio de vivienda estás dentro de los parámetros recomendados.",
     ratio_menor_10_vivienda_mal: "No tienes un ratio de deuda al consumo preocupante, pero si se analiza conjuntamente con el ratio de vivienda, sí empieza a superar los límites recomendados."
   }
@@ -2451,7 +2458,15 @@ function determinarSituacionLaboralParaColchon(userData) {
   if (situacion.includes('cuenta propia') || situacion.includes('autónomo')) {
     return 'autonomo';
   }
+  if (situacion.includes('no estoy trabajando') || situacion.includes('no trabajo')) {
+    return 'sin_trabajo';
+  }
   return 'cuenta_ajena';
+}
+
+function esUnidadFamiliar(userData) {
+  const gastosPara = (userData.gastos_para || '').toLowerCase();
+  return gastosPara.includes('unidad familiar') || gastosPara.includes('todos');
 }
 
 function determinarTipoVivienda(userData) {
@@ -2514,18 +2529,44 @@ function ratioDeudaMayorA10(userData) {
 function generarBloqueColchonArbol(userData, perfil) {
   const situacion = determinarSituacionLaboralParaColchon(userData);
   const estadoColchon = (perfil.colchon || '').toLowerCase();
+  const respuestaColchon = userData.colchon_liquido || 'No especificado';
   const bloques = [];
-
-  bloques.push(ARBOL_TEXTOS.colchon[situacion].comun);
-  bloques.push("");
 
   const esMal = estadoColchon.includes('mal');
   const esBienOSuperBien = estadoColchon.includes('bien') || estadoColchon.includes('super bien');
 
-  if (esMal) {
-    bloques.push(ARBOL_TEXTOS.colchon[situacion].mal);
-  } else if (esBienOSuperBien) {
-    bloques.push(ARBOL_TEXTOS.colchon[situacion].bien);
+  // Caso especial: sin trabajo y gastos solo para sí mismo
+  if (situacion === 'sin_trabajo') {
+    if (esUnidadFamiliar(userData)) {
+      // 1.3.1 Unidad familiar → mismo que cuenta ajena
+      bloques.push(ARBOL_TEXTOS.colchon.cuenta_ajena.comun);
+      bloques.push("");
+      if (esMal) {
+        bloques.push(ARBOL_TEXTOS.colchon.cuenta_ajena.mal);
+      } else if (esBienOSuperBien) {
+        bloques.push(ARBOL_TEXTOS.colchon.cuenta_ajena.bien);
+      }
+    } else {
+      // 1.3.2 Nombre propio → texto especial
+      const textos = ARBOL_TEXTOS.colchon.sin_trabajo_propio;
+      bloques.push(`${textos.comun_prefix} ${respuestaColchon}.`);
+      bloques.push("");
+      if (esMal) {
+        bloques.push(textos.mal);
+      } else if (esBienOSuperBien) {
+        const capacidadRecorte = userData.capacidad_recorte || 'No especificado';
+        bloques.push(`${textos.bien_prefix} ${capacidadRecorte} ${textos.bien_suffix}`);
+      }
+    }
+  } else {
+    // Caso estándar: autónomo o cuenta ajena
+    bloques.push(ARBOL_TEXTOS.colchon[situacion].comun);
+    bloques.push("");
+    if (esMal) {
+      bloques.push(ARBOL_TEXTOS.colchon[situacion].mal);
+    } else if (esBienOSuperBien) {
+      bloques.push(ARBOL_TEXTOS.colchon[situacion].bien);
+    }
   }
 
   return bloques.join('\n');
@@ -2541,7 +2582,7 @@ function generarBloqueViviendaArbol(userData, perfil) {
 
   bloques.push(bloquesVivienda.comun);
   bloques.push("");
-  bloques.push(`En concreto destinas un ${gastoVivienda} de tus ingresos al pago de tu vivienda.`);
+  bloques.push(`En concreto destinas ${gastoVivienda} de tus ingresos al pago de tu vivienda.`);
   bloques.push("");
 
   const ratioViviendaBien = estadoVivienda.includes('bien') || estadoVivienda.includes('super bien');
@@ -2650,9 +2691,15 @@ function generarBloqueDeudaArbol(userData, perfil) {
   bloques.push("");
 
   // Determinar conclusión según ratio de deuda y vivienda
+  const tipoVivienda = determinarTipoVivienda(userData);
+
   if (ratioDeudaMayorA10(userData)) {
     // Ratio de deuda > 10%
-    bloques.push(textosDeuda.ratio_mayor_10);
+    if (tipoVivienda === 'pagada') {
+      bloques.push(textosDeuda.ratio_mayor_10_casa_pagada);
+    } else {
+      bloques.push(textosDeuda.ratio_mayor_10_hipoteca_o_alquiler);
+    }
   } else {
     // Ratio de deuda < 10%
     const ratioViviendaMal = estadoVivienda.includes('mal');
@@ -2676,15 +2723,15 @@ function generarInsightDesdeArbolDecision(userData, perfil) {
       secciones.push(generarBloqueColchonArbol(userData, perfil));
     }
 
-    // 2. Vivienda
-    if (perfil.vivienda) {
-      secciones.push(generarBloqueViviendaArbol(userData, perfil));
-    }
-
-    // 3. Ahorro (siempre se genera, ya sea que le preocupe o no)
+    // 2. Ahorro (siempre se genera, ya sea que le preocupe o no)
     const bloqueAhorro = generarBloqueAhorroArbol(userData, perfil);
     if (bloqueAhorro) {
       secciones.push(bloqueAhorro);
+    }
+
+    // 3. Vivienda
+    if (perfil.vivienda) {
+      secciones.push(generarBloqueViviendaArbol(userData, perfil));
     }
 
     // 4. Deuda (solo si tiene deuda)
