@@ -674,8 +674,19 @@ function processRowInsight(sheet, rowNumber) {
     const insight = generarInsightDesdeArbolDecision(userData, resultadoPerfilado.perfil);
 
     if (insight && insight.length > 10) {
+      // Guardar insight original en AV
       insightCell.setValue(insight);
       Logger.log(`✅ Fila ${rowNumber}: Insight generado desde árbol de decisión`);
+
+      // ========== AJUSTAR TONO CON OPENAI ==========
+      const insightAjustado = ajustarTonoConOpenAI(insight);
+      if (insightAjustado) {
+        const insightAjustadoCell = sheet.getRange(rowNumber, CONFIG.COLUMNS.INSIGHT_AJUSTADO + 1);
+        insightAjustadoCell.setValue(insightAjustado);
+        Logger.log(`✅ Fila ${rowNumber}: Insight con tono ajustado guardado en AX`);
+      } else {
+        Logger.log(`⚠️ Fila ${rowNumber}: No se pudo ajustar el tono (revisa D2 en Prompts)`);
+      }
 
       // Crear/actualizar contacto en Mailchimp solo con tag
       Utilities.sleep(1000);
@@ -1469,6 +1480,72 @@ Devuelve SOLO: "Tu colchón está bien..."`;
   } catch (error) {
     Logger.log('Error OpenAI: ' + error.toString());
     return 'Error al generar insight. Revisa los logs.';
+  }
+}
+
+// ============================================================================
+// AJUSTE DE TONO CON OPENAI
+// ============================================================================
+
+function ajustarTonoConOpenAI(insightOriginal) {
+  try {
+    // Leer el prompt de tono desde la hoja Prompts (celda D2)
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const promptsSheet = ss.getSheetByName(CONFIG.SHEET_NAME_PROMPTS);
+
+    if (!promptsSheet) {
+      Logger.log('❌ No se encontró la hoja "Prompts"');
+      return null;
+    }
+
+    const promptTono = promptsSheet.getRange('D2').getValue();
+
+    if (!promptTono || promptTono.trim() === '') {
+      Logger.log('⚠️ La celda D2 de Prompts está vacía. No se ajustará el tono.');
+      return null;
+    }
+
+    Logger.log('🎨 Ajustando tono del insight con OpenAI...');
+
+    const response = UrlFetchApp.fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'post',
+      headers: {
+        'Authorization': 'Bearer ' + CONFIG.OPENAI_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      payload: JSON.stringify({
+        model: 'gpt-4',
+        messages: [
+          {
+            role: 'system',
+            content: promptTono
+          },
+          {
+            role: 'user',
+            content: insightOriginal
+          }
+        ],
+        temperature: 0.7, // Temperatura más alta para variedad en el tono
+        max_tokens: 2500
+      }),
+      muteHttpExceptions: true
+    });
+
+    const result = JSON.parse(response.getContentText());
+
+    if (result.error) {
+      Logger.log('❌ Error OpenAI API (ajuste tono): ' + JSON.stringify(result.error));
+      return null;
+    }
+
+    const insightAjustado = result.choices[0].message.content;
+    Logger.log('✅ Tono ajustado correctamente');
+
+    return insightAjustado;
+
+  } catch (error) {
+    Logger.log('❌ Error al ajustar tono: ' + error.toString());
+    return null;
   }
 }
 
