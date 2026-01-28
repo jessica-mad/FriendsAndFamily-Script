@@ -80,6 +80,7 @@ const CONFIG = {
     SUBMITTED_AT: 45,   // AT
     TOKEN: 46,          // AU
     INSIGHT: 47,        // AV - Columna donde se guardará el insight generado
-    PERFILADO: 48       // AW - Resultado del perfilado antes de generar insight
+    PERFILADO: 48,      // AW - Resultado del perfilado antes de generar insight
+    INSIGHT_AJUSTADO: 49 // AX - Insight con tono ajustado por OpenAI
   }
 };
