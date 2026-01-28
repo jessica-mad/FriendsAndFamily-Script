@@ -2576,7 +2576,8 @@ function hacePreahorro(userData) {
 }
 
 function determinarTamanoFamilia(userData) {
-  const unidadFamiliar = (userData.unidad_familiar || '').toLowerCase();
+  // Convertir a string por si viene como número desde la hoja
+  const unidadFamiliar = String(userData.unidad_familiar || '').toLowerCase();
   // Si tiene más de 2 miembros (entre 3 y 5, o más de 5)
   if (unidadFamiliar.includes('3') || unidadFamiliar.includes('4') || unidadFamiliar.includes('5') || unidadFamiliar.includes('más de')) {
     return 'grande'; // más de 2 miembros
@@ -2585,7 +2586,8 @@ function determinarTamanoFamilia(userData) {
 }
 
 function determinarRangoEdad(userData) {
-  const edad = (userData.edad || '').toLowerCase();
+  // Convertir a string por si viene como número desde la hoja
+  const edad = String(userData.edad || '').toLowerCase();
   // Menos de 35 años
   if (edad.includes('menos de 35') || edad.includes('18') || edad.includes('25') || edad.includes('30')) {
     return 'joven';
