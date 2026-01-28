@@ -2290,11 +2290,17 @@ function processRowEmail(sheet, rowNumber) {
   try {
     logDetailed(`\n📧 Procesando envío de email fila ${rowNumber}`);
 
-    const rowData = sheet.getRange(rowNumber, 1, 1, CONFIG.COLUMNS.INSIGHT + 1).getValues()[0];
+    // Extender el rango para incluir INSIGHT_AJUSTADO (columna AX)
+    const rowData = sheet.getRange(rowNumber, 1, 1, CONFIG.COLUMNS.INSIGHT_AJUSTADO + 1).getValues()[0];
     const userData = extractUserData(rowData);
-    const insight = rowData[CONFIG.COLUMNS.INSIGHT];
+
+    // Usar insight ajustado (AX) si existe, sino usar el original (AV)
+    const insightAjustado = rowData[CONFIG.COLUMNS.INSIGHT_AJUSTADO];
+    const insightOriginal = rowData[CONFIG.COLUMNS.INSIGHT];
+    const insight = (insightAjustado && insightAjustado.trim() !== '') ? insightAjustado : insightOriginal;
 
     logDetailed(`Email: ${userData.email}`);
+    logDetailed(`Usando insight ${(insightAjustado && insightAjustado.trim() !== '') ? 'AJUSTADO (AX)' : 'ORIGINAL (AV)'}`);
     logDetailed(`Insight length: ${insight ? insight.length : 0}`);
 
     if (!userData.email || !userData.email.includes('@')) {
